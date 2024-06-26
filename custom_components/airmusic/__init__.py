@@ -3,7 +3,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import discovery
 
-DOMAIN = 'airmusic'
+from .const import DOMAIN
+
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -20,7 +21,9 @@ async def async_setup(hass: HomeAssistant, config: dict):
         'token': token
     }
 
-    await discovery.async_load_platform(hass, 'media_player', DOMAIN, {}, config)
+    await hass.async_create_task(
+        discovery.async_load_platform(hass, 'media_player', DOMAIN, {}, config)
+    )
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
@@ -28,19 +31,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = entry.data
 
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(entry, 'media_player')
-    )
-
+    await hass.config_entries.async_forward_entry_setup(entry, 'media_player')
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
     await hass.config_entries.async_forward_entry_unload(entry, 'media_player')
     hass.data[DOMAIN].pop(entry.entry_id)
-
     return True
-
 
 
 
