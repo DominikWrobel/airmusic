@@ -5,5 +5,5 @@
   "documentation": "https://github.com/DominikWrobel/airmusic",
   "dependencies": [],
   "codeowners": ["DominikWrobel"],
-  "requirements": []
+  "requirements": ["requests", "xmltodict"]
 }
