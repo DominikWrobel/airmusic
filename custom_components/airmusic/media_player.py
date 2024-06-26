@@ -95,4 +95,31 @@ class AirMusicDevice(MediaPlayerEntity):
             self._state = STATE_PLAYING if status == 'playing' else STATE_IDLE
             self._volume = self._airmusic.get_volume() / 100
             self._muted = self._airmusic.is_muted()
-        except Exception as
+        except Exception as e:
+            _LOGGER.error(f"Error updating AirMusic device: {e}")
+
+    def media_play(self):
+        if self._airmusic.play():
+            self._state = STATE_PLAYING
+
+    def media_pause(self):
+        if self._airmusic.pause():
+            self._state = STATE_PAUSED
+
+    def media_stop(self):
+        if self._airmusic.stop():
+            self._state = STATE_IDLE
+
+    def set_volume_level(self, volume):
+        if self._airmusic.set_volume(int(volume * 100)):
+            self._volume = volume
+
+    def mute_volume(self, mute):
+        if self._airmusic.mute(mute):
+            self._muted = mute
+
+    def select_source(self, source):
+        if source in SOURCES:
+            if self._airmusic.press_key(SOURCES[source]):
+                self._source = source
+
