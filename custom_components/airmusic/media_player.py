@@ -13,7 +13,6 @@ from homeassistant.components.media_player.const import (
     SUPPORT_VOLUME_MUTE,
     SUPPORT_PREVIOUS_TRACK,
     SUPPORT_NEXT_TRACK,
-    MEDIA_TYPE_MUSIC,
 )
 from homeassistant.const import (
     CONF_HOST,
@@ -51,7 +50,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         return
 
     host = discovery_info[CONF_HOST]
-    name = discovery_info[CONF_NAME]
+    name = discovery_info.get(CONF_NAME, DEFAULT_NAME)
 
     add_entities([AirMusicDevice(name, host)], True)
 
@@ -97,14 +96,12 @@ class AirMusicDevice(MediaPlayerEntity):
 
     def turn_on(self):
         """Turn on the media player."""
-        # Your logic to turn on the player
         _LOGGER.debug("Turning on the player")
         self._state = STATE_PLAYING
         self.schedule_update_ha_state()
 
     def turn_off(self):
         """Turn off the media player."""
-        # Your logic to turn off the player
         _LOGGER.debug("Turning off the player")
         self._state = STATE_IDLE
         self.schedule_update_ha_state()
