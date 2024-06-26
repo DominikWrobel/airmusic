@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from afsapi import (
-    AFSAPI,
+from airmusicapi import (
+    airmusic,
     ConnectionError as FSConnectionError,
     NotImplementedException as FSNotImplementedException,
     PlayState,
