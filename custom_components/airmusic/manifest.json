@@ -6,5 +6,5 @@
   "dependencies": [],
   "codeowners": ["DominikWrobel"],
   "requirements": ["requests", "xmltodict"]
-  "config_flow": [true]
+  "config_flow": true
 }
