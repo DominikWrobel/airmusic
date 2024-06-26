@@ -6,5 +6,6 @@
   "dependencies": [],
   "codeowners": ["DominikWrobel"],
   "config_flow": true,
-  "requirements": ["requests", "xmltodict"]
+  "requirements": ["requests", "xmltodict"],
+  "iot_class": "local_push"
 }
