@@ -66,7 +66,7 @@ class airmusic(object):
         @param device_address holds the device IP-address or resolvable name.
         @param timeout determines the maximum amount of seconds to wait for a reply from the device.
         """
-        self.device_address = device_address
+        self.device_address = CONF_HOST
         self.timeout = timeout
         logging.basicConfig(level=logging.INFO,
                             format='[%(asctime)s] %(levelname)-8s %(name)-12s %(message)s',
