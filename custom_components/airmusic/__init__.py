@@ -3,7 +3,7 @@ Support for Lenco DIR150BK and other Airmusic based Internet Radios.
 """
 import json
 import time
-from airmusicapi import airmusic
+from . import airmusic
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PIN, Platform
