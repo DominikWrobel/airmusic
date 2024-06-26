@@ -1,13 +1,12 @@
 # custom_components/airmusic/__init__.py
 
 import logging
-import asyncio
+import voluptuous as vol
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.typing import ConfigType, HomeAssistantType
+from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers import discovery
 import homeassistant.helpers.config_validation as cv
-import voluptuous as vol
 from homeassistant.const import CONF_HOST, CONF_NAME
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,7 +25,7 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the AirMusic component."""
     _LOGGER.info("Setting up AirMusic component")
     
@@ -42,19 +41,7 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType) -> bool:
 
     # Load platforms supported by this component
     hass.async_create_task(
-        discovery.async_load_platform(hass, "media_player", DOMAIN, conf, config)
+        discovery.async_load_platform(hass, "media_player", DOMAIN, {}, config)
     )
 
     return True
-
-# Uncomment and implement if there is an async_setup_entry
-# async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-#     """Set up AirMusic from a config entry."""
-#     _LOGGER.info("Setting up AirMusic from config entry")
-#     return await async_setup(hass, entry.data)
-
-# Uncomment and implement if there is an async_unload_entry
-# async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-#     """Unload a config entry."""
-#     _LOGGER.info("Unloading AirMusic config entry")
-#     return True
