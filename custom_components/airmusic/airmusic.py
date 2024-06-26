@@ -5,6 +5,8 @@ import logging
 import requests
 import xmltodict
 
+_LOGGER = logging.getLogger(__name__)
+
 
 VERSION = '0.0.1'
 
