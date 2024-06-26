@@ -29,7 +29,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     ip_address = hass.data['airmusic']['ip_address']
     token = hass.data['airmusic']['token']
 
-    add_entities([AirMusicDevice(ip_address, token)])
+    add_entities([airmusicDevice(ip_address, token)])
 
 class AirMusicDevice(MediaPlayerEntity):
     """Representation of an AirMusic device."""
@@ -41,7 +41,7 @@ class AirMusicDevice(MediaPlayerEntity):
         self._state = STATE_IDLE
         self._volume = 0
         self._muted = False
-        self._airmusic = airmusic.AirMusic(ip_address, token)
+        self._airmusic = airmusic.airmusic(ip_address, token)
 
     @property
     def name(self):
