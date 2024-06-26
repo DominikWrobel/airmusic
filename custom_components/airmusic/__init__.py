@@ -28,6 +28,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up AirMusic from a config entry."""
+    _LOGGER.debug(f"Setting up entry: {entry.data}")
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = entry.data
 
@@ -36,10 +37,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
+    _LOGGER.debug(f"Unloading entry: {entry.entry_id}")
     await hass.config_entries.async_forward_entry_unload(entry, 'media_player')
     hass.data[DOMAIN].pop(entry.entry_id)
     return True
-
 
 
 
