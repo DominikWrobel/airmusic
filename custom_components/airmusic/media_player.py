@@ -47,8 +47,11 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the AirMusic platform."""
-    host = config[CONF_HOST]
-    name = config[CONF_NAME]
+    if discovery_info is None:
+        return
+
+    host = discovery_info[CONF_HOST]
+    name = discovery_info[CONF_NAME]
 
     add_entities([AirMusicDevice(name, host)], True)
 
