@@ -7,7 +7,7 @@ import logging
 from typing import Any
 from urllib.parse import urlparse
 
-from .airmusic import (
+from airmusicapi import (
     AIRMUSIC,
     ConnectionError as FSConnectionError,
     InvalidPinException,
