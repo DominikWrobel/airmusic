@@ -8,7 +8,7 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers import discovery
 import homeassistant.helpers.config_validation as cv
 from homeassistant.const import CONF_HOST, CONF_NAME
-from airmusicapi import airmusic
+from . import airmusic
 
 
 _LOGGER = logging.getLogger(__name__)
