@@ -37,24 +37,21 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         return
 
     ip_address = hass.data[DOMAIN]['ip_address']
-    token = hass.data[DOMAIN]['token']
 
-    async_add_entities([AirMusicDevice(ip_address, token)])
+    async_add_entities([AirMusicDevice(ip_address)])
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up AirMusic from a config entry."""
     config = hass.data[DOMAIN][entry.entry_id]
     ip_address = config['ip_address']
-    token = config['token']
 
-    async_add_entities([AirMusicDevice(ip_address, token)])
+    async_add_entities([AirMusicDevice(ip_address)])
 
 class AirMusicDevice(MediaPlayerEntity):
     """Representation of an AirMusic device."""
 
-    def __init__(self, ip_address, token):
+    def __init__(self, ip_address):
         self._ip_address = ip_address
-        self._token = token
         self._state = STATE_IDLE
         self._volume = 0
         self._muted = False
@@ -122,4 +119,3 @@ class AirMusicDevice(MediaPlayerEntity):
         if source in SOURCES:
             if self._airmusic.press_key(SOURCES[source]):
                 self._source = source
-
