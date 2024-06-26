@@ -30,8 +30,7 @@ class AirMusicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
 
         data_schema = {
-            vol.Required("ip_address"): str,
-            vol.Required("token"): str
+            vol.Required("ip_address"): str
         }
 
         return self.async_show_form(
