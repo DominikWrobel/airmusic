@@ -49,7 +49,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     if discovery_info is None:
         return
 
-    host = discovery_info[CONF_HOST]
+    host = [CONF_HOST]
     name = discovery_info.get(CONF_NAME, DEFAULT_NAME)
 
     add_entities([AirMusicDevice(name, host)], True)
