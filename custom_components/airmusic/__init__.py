@@ -14,11 +14,9 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
     conf = config[DOMAIN]
     ip_address = conf.get('ip_address')
-    token = conf.get('token')
 
     hass.data[DOMAIN] = {
         'ip_address': ip_address,
-        'token': token
     }
 
     await hass.async_create_task(
@@ -41,6 +39,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     await hass.config_entries.async_forward_entry_unload(entry, 'media_player')
     hass.data[DOMAIN].pop(entry.entry_id)
     return True
-
-
-
