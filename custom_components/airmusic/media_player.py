@@ -15,6 +15,7 @@ from homeassistant.components.media_player.const import (
 from homeassistant.const import STATE_IDLE, STATE_PLAYING, STATE_PAUSED
 
 from .airmusic import airmusic
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,15 +31,23 @@ SOURCES = {
     "Network Device": airmusic.KEY_MODE,
 }
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the AirMusic media player platform."""
     if discovery_info is None:
         return
 
-    ip_address = hass.data['airmusic']['ip_address']
-    token = hass.data['airmusic']['token']
+    ip_address = hass.data[DOMAIN]['ip_address']
+    token = hass.data[DOMAIN]['token']
 
-    add_entities([AirMusicDevice(ip_address, token)])
+    async_add_entities([AirMusicDevice(ip_address, token)])
+
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Set up AirMusic from a config entry."""
+    config = hass.data[DOMAIN][entry.entry_id]
+    ip_address = config['ip_address']
+    token = config['token']
+
+    async_add_entities([AirMusicDevice(ip_address, token)])
 
 class AirMusicDevice(MediaPlayerEntity):
     """Representation of an AirMusic device."""
