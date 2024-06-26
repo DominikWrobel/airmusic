@@ -21,3 +21,6 @@ class AirMusicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required("token"): str
         }
 
+        return self.async_show_form(
+            step_id="user", data_schema=vol.Schema(data_schema), errors=errors
+        )
