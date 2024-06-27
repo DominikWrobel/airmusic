@@ -7,6 +7,20 @@ import xmltodict
 
 _LOGGER = logging.getLogger(__name__)
 
+
+class airmusic:
+    # Define the constants
+    KEY_MODE = 'KEY_MODE'
+    KEY_INTERNETRADIO = 'KEY_INTERNETRADIO'
+    KEY_PLAY = 'KEY_PLAY'
+    KEY_PAUSE = 'KEY_PAUSE'
+    KEY_STOP = 'KEY_STOP'
+    KEY_MUTE = 'KEY_MUTE'
+    KEY_UNMUTE = 'KEY_UNMUTE'
+
+    DEFAULT_AUTH = 'c3UzZzRnbzZzazc6amkzOTQ1NHh1L14='
+
+
 VERSION = '0.0.1'
 
 
