@@ -3,6 +3,7 @@ import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 import logging
 
+from homeassistant.const import CONF_HOST  # Add this import
 from .const import DOMAIN
 from .airmusic import airmusic
 
@@ -20,7 +21,7 @@ class AirMusicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 # Perform a test connection to the AirMusic device
-                device = airmusic(user_input["ip_address"])
+                device = airmusic(user_input[CONF_HOST])
                 if not device.get_status():
                     errors["base"] = "cannot_connect"
                 else:
@@ -30,9 +31,10 @@ class AirMusicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
 
         data_schema = {
-            vol.Required("ip_address"): str
+            vol.Required(CONF_HOST): str
         }
 
         return self.async_show_form(
             step_id="user", data_schema=vol.Schema(data_schema), errors=errors
         )
+
