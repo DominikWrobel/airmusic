@@ -1,6 +1,7 @@
 import logging
 import requests
 import xmltodict
+from functools import partial
 
 _LOGGER = logging.getLogger(__name__)
 
