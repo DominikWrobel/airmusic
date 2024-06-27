@@ -21,7 +21,9 @@ class AirMusicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 # Perform a test connection to the AirMusic device
                 device = airmusic(user_input[CONF_HOST])
-                if not device.get_status():
+                # Use executor for blocking call
+                result = await self.hass.async_add_executor_job(device.get_status)
+                if not result:
                     errors["base"] = "cannot_connect"
                 else:
                     return self.async_create_entry(title="AirMusic", data=user_input)
