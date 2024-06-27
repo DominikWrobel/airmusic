@@ -12,7 +12,7 @@ from homeassistant.components.media_player.const import (
     SUPPORT_VOLUME_MUTE,
     SUPPORT_SELECT_SOURCE,
 )
-from homeassistant.const import STATE_IDLE, STATE_PLAYING, STATE_PAUSED
+from homeassistant.const import STATE_IDLE, STATE_PLAYING, STATE_PAUSED, CONF_HOST  # Add this import
 
 from .airmusic import airmusic
 from .const import DOMAIN
@@ -36,14 +36,14 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     if discovery_info is None:
         return
 
-    ip_address = hass.data[DOMAIN]['ip_address']
+    ip_address = hass.data[DOMAIN][CONF_HOST]
 
     async_add_entities([AirMusicDevice(ip_address)])
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up AirMusic from a config entry."""
     config = hass.data[DOMAIN][entry.entry_id]
-    ip_address = config['ip_address']
+    ip_address = config[CONF_HOST]
 
     async_add_entities([AirMusicDevice(ip_address)])
 
@@ -117,5 +117,6 @@ class AirMusicDevice(MediaPlayerEntity):
 
     def select_source(self, source):
         if source in SOURCES:
-            if self._airmusic.press_key(SOURCES[source]):
+            if self._airmusic.press_key(SOURCES[source])):
                 self._source = source
+
