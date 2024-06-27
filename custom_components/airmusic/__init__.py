@@ -2,6 +2,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import discovery
+from homeassistant.const import CONF_HOST  # Add this import
 
 from .const import DOMAIN
 
@@ -13,10 +14,10 @@ async def async_setup(hass: HomeAssistant, config: dict):
         return True
 
     conf = config[DOMAIN]
-    ip_address = conf.get('ip_address')
+    ip_address = conf.get(CONF_HOST)
 
     hass.data[DOMAIN] = {
-        'ip_address': ip_address,
+        CONF_HOST: ip_address,
     }
 
     await hass.async_create_task(
@@ -39,3 +40,4 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     await hass.config_entries.async_forward_entry_unload(entry, 'media_player')
     hass.data[DOMAIN].pop(entry.entry_id)
     return True
+
