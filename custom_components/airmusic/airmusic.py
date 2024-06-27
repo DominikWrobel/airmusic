@@ -36,7 +36,7 @@ class airmusic:
             return False
 
     def get_status(self):
-        url = f"http://{self._device_address}/status"
+        url = f"http://{self._device_address}/init"
         headers = {
             "Authorization": f"Basic {self.DEFAULT_AUTH}"
         }
