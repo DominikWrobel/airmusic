@@ -36,7 +36,7 @@ class airmusic:
             return False
 
     def get_status(self):
-        url = f"http://{self._device_address}/status"
+        url = f"http://{self._device_address}/GetSystemInfo"
         headers = {
             "Authorization": f"Basic {self.DEFAULT_AUTH}"
         }
@@ -50,7 +50,7 @@ class airmusic:
             return None
 
     def get_volume(self):
-        url = f"http://{self._device_address}/volume"
+        url = f"http://{self._device_address}/setvol"
         headers = {
             "Authorization": f"Basic {self.DEFAULT_AUTH}"
         }
@@ -64,7 +64,7 @@ class airmusic:
             return 0
 
     def is_muted(self):
-        url = f"http://{self._device_address}/mute"
+        url = f"http://{self._device_address}/get_background_play_status()"
         headers = {
             "Authorization": f"Basic {self.DEFAULT_AUTH}"
         }
@@ -101,4 +101,4 @@ class airmusic:
             return False
 
     def mute(self, mute):
-        return self.press_key(self.KEY_MUTE if mute else self.KEY_UNMUTE)
+        return self.send_cmd('setvol', params=dict(mute=1 if value else 0))
