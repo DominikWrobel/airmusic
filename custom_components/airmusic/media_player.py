@@ -117,6 +117,5 @@ class AirMusicDevice(MediaPlayerEntity):
 
     def select_source(self, source):
         if source in SOURCES:
-            if self._airmusic.press_key(SOURCES[source])):
+            if self._airmusic.press_key(SOURCES[source]):
                 self._source = source
-
