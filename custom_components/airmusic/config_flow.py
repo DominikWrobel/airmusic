@@ -2,7 +2,7 @@ from homeassistant import config_entries
 import voluptuous as vol
 import logging
 
-from homeassistant.const import CONF_HOST  # Add this import
+from homeassistant.const import CONF_HOST  # Import CONF_HOST
 from .const import DOMAIN
 from .airmusic import airmusic
 
@@ -30,7 +30,7 @@ class AirMusicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
 
         data_schema = {
-            vol.Required(CONF_HOST): str
+            vol.Required(CONF_HOST, default=""): str  # Use CONF_HOST
         }
 
         return self.async_show_form(
