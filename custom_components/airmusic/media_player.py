@@ -12,7 +12,7 @@ from homeassistant.components.media_player.const import (
     SUPPORT_VOLUME_MUTE,
     SUPPORT_SELECT_SOURCE,
 )
-from homeassistant.const import STATE_IDLE, STATE_PLAYING, STATE_PAUSED, CONF_HOST  # Add this import
+from homeassistant.const import STATE_IDLE, STATE_PLAYING, STATE_PAUSED, CONF_HOST  # Import CONF_HOST
 
 from .airmusic import airmusic
 from .const import DOMAIN
