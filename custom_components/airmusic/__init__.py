@@ -2,7 +2,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import discovery
-from homeassistant.const import CONF_HOST  # Add this import
+from homeassistant.const import CONF_HOST  # Import CONF_HOST
 
 from .const import DOMAIN
 
