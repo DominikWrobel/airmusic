@@ -1,6 +1,5 @@
 from homeassistant import config_entries
 import voluptuous as vol
-import homeassistant.helpers.config_validation as cv
 import logging
 
 from homeassistant.const import CONF_HOST  # Add this import
@@ -37,4 +36,3 @@ class AirMusicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user", data_schema=vol.Schema(data_schema), errors=errors
         )
-
