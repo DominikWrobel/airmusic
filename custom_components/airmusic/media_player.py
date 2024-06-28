@@ -57,7 +57,7 @@ class AirMusicDevice(MediaPlayerEntity):
         self._volume = 0
         self._muted = False
         self._source = None
-        self._airmusic = airmusic(ip_address)
+        self._airmusic = airmusic(ip_address, timeout)
 
     @property
     def name(self):
@@ -112,9 +112,8 @@ class AirMusicDevice(MediaPlayerEntity):
         if await self._hass.async_add_executor_job(self._airmusic.set_volume, int(volume * 100)):
             self._volume = volume
 
-    async def async_mute_volume(self, mute):
-        if await self._hass.async_add_executor_job(self._airmusic.mute, mute):
-            self._muted = mute
+    def async_mute_volume(self, mute):
+        self._airmusic.mute = mute
 
     async def async_select_source(self, source):
         if source in SOURCES:
