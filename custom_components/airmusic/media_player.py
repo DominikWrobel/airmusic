@@ -113,7 +113,8 @@ class AirMusicDevice(MediaPlayerEntity):
             self._volume = volume
 
     def mute_volume(self, mute):
-        self._airmusic.mute = mute
+        self._muted = await self._hass.async_add_executor_job(self._airmusic.get_mute())
+#        self._airmusic.mute = mute
 
     async def async_update(self):
         try:
