@@ -108,11 +108,11 @@ class AirMusicDevice(MediaPlayerEntity):
         if await self._hass.async_add_executor_job(self._airmusic.stop):
             self._state = STATE_IDLE
 
-    def async_set_volume_level(self, volume):
+    async def async_set_volume_level(self, volume):
         if await self._hass.async_add_executor_job(self._airmusic.set_volume, int(volume * 100)):
             self._volume = volume
 
-    def async_mute_volume(self, mute):
+    def mute_volume(self, mute):
         self._airmusic.mute = mute
 
     async def async_select_source(self, source):
