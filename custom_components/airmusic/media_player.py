@@ -65,6 +65,7 @@ class AirMusicDevice(MediaPlayerEntity):
         self._turn_off = self.turn_off
         self._turn_on = self.turn_on
         self._stop = self.stop
+        self._play_pause = self.play_pause
 
     @property
     def name(self):
@@ -95,12 +96,17 @@ class AirMusicDevice(MediaPlayerEntity):
         return self._turn_on
         
     @property
-    def stop(self):
-        return self.stop
+    def turn_off(self):
+        return self._turn_off
         
     @property
-    def turn_on(self):
-        return self._turn_on
+    def stop(self):
+        return self._stop
+
+    @property
+    def play_pause(self):
+        return self._play_pause
+
 
     @property
     def source_list(self):
@@ -109,7 +115,7 @@ class AirMusicDevice(MediaPlayerEntity):
     async def async_update(self):
         try:
             status = await self._hass.async_add_executor_job(self._airmusic.get_playinfo)
-            self._state = STATE_PLAYING if int(self._airmusic.get_playinfo.sid == '6') else STATE_IDLE
+            self._state = STATE_PLAYING if status == 'playing' else STATE_IDLE
             self._muted = await self._hass.async_add_executor_job(self._airmusic.get_mute)
             self._volume = await self._hass.async_add_executor_job(self._airmusic.get_volume) / 30
         except Exception as e:
@@ -151,6 +157,9 @@ class AirMusicDevice(MediaPlayerEntity):
 
     def turn_off(self, turn_off):
         self._airmusic.turn_off = turn_off
+        
+    def play_pause (self, play_pause):
+        self._aimusic.play_pause = play_pause
 
     async def async_select_source(self, source):
         if source in SOURCES:
