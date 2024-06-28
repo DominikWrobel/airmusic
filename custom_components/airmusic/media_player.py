@@ -117,7 +117,7 @@ class AirMusicDevice(MediaPlayerEntity):
 
     async def async_update(self):
         try:
-            self._muted = await self._hass.async_add_executor_job(self._airmusic.muted)
+            self._muted = await self._hass.async_add_executor_job(self._airmusic.mute)
         except Exception as e:
             _LOGGER.error(f"Error updating AirMusic device: {e}")
 
