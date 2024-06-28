@@ -51,6 +51,8 @@ class airmusic(object):
     KEY_SYSTEMMENU = 110  # Go to the system menu.
     KEY_WPS = 111  # Start WPS mode.
     KEY_NEXTFAV = 112  # Go to the next station in the favourites list.
+    
+    DEFAULT_AUTH = 'c3UzZzRnbzZzazc6amkzOTQ1NHh1L14='
 
     SID = {1, 'Stopped',
            2, 'Buffering',
