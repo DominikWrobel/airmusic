@@ -57,7 +57,7 @@ class AirMusicDevice(MediaPlayerEntity):
         self._volume = 0
         self._muted = False
         self._source = None
-        self._airmusic = airmusic(ip_address, timeout)
+        self._airmusic = airmusic(ip_address)
 
     @property
     def name(self):
