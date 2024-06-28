@@ -53,7 +53,7 @@ class AirMusicDevice(MediaPlayerEntity):
     def __init__(self, hass, ip_address):
         self._hass = hass
         self._ip_address = ip_address
-        self._airmusic = airmusic(ip_address, timeout)
+        self._airmusic = airmusic(ip_address)
 
     @property
     def name(self):
@@ -104,7 +104,7 @@ class AirMusicDevice(MediaPlayerEntity):
         if await self._hass.async_add_executor_job(self._airmusic.stop):
             self._state = STATE_IDLE
 
-    async def async_set_volume_level(self, volume):
+    def async_set_volume_level(self, volume):
         if await self._hass.async_add_executor_job(self._airmusic.set_volume, int(volume * 100)):
             self._volume = volume
 
