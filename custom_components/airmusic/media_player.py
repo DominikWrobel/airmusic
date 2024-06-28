@@ -92,7 +92,7 @@ class AirMusicDevice(MediaPlayerEntity):
             status = await self._hass.async_add_executor_job(self._airmusic.get_status)
             self._state = STATE_PLAYING if status == 'playing' else STATE_IDLE
             self._volume = await self._hass.async_add_executor_job(self._airmusic.get_volume) / 100
-            self._muted = await self._hass.async_add_executor_job(self._airmusic.is_muted)
+            self._muted = await self._hass.async_add_executor_job(self._airmusic.get_mute())
         except Exception as e:
             _LOGGER.error(f"Error updating AirMusic device: {e}")
 
@@ -113,14 +113,13 @@ class AirMusicDevice(MediaPlayerEntity):
             self._volume = volume
 
     def mute_volume(self, mute):
-        self._muted = await self._hass.async_add_executor_job(self._airmusic.get_mute())
-#        self._airmusic.mute = mute
+        self._airmusic.mute = mute
 
-    async def async_update(self):
-        try:
-            self._muted = await self._hass.async_add_executor_job(self._airmusic.muted)
-        except Exception as e:
-            _LOGGER.error(f"Error updating AirMusic device: {e}")
+#    async def async_update(self):
+#        try:
+#            self._muted = await self._hass.async_add_executor_job(self._airmusic.muted)
+#        except Exception as e:
+#            _LOGGER.error(f"Error updating AirMusic device: {e}")
 
     async def async_select_source(self, source):
         if source in SOURCES:
