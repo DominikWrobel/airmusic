@@ -53,7 +53,11 @@ class AirMusicDevice(MediaPlayerEntity):
     def __init__(self, hass, ip_address):
         self._hass = hass
         self._ip_address = ip_address
-        self._airmusic = airmusic(ip_address)
+        self._state = STATE_IDLE
+        self._volume = 0
+        self._muted = False
+        self._source = None
+        self._airmusic = airmusic(ip_address, timeout)
 
     @property
     def name(self):
