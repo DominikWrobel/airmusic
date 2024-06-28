@@ -14,7 +14,7 @@ from homeassistant.components.media_player.const import (
 )
 from homeassistant.const import STATE_IDLE, STATE_PLAYING, STATE_PAUSED, CONF_HOST  # Import CONF_HOST
 
-from .airmusic import airmusic
+from .airmusicapi import airmusic
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
