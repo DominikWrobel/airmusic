@@ -2,7 +2,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import discovery
-from homeassistant.const import CONF_HOST  # Import CONF_HOST
+from homeassistant.const import CONF_HOST, CONF_NAME
 
 from .const import DOMAIN
 
@@ -14,15 +14,25 @@ async def async_setup(hass: HomeAssistant, config: dict):
         return True
 
     conf = config[DOMAIN]
-    ip_address = conf.get(CONF_HOST)
+    devices = conf.get('devices', [])
 
-    hass.data[DOMAIN] = {
-        CONF_HOST: ip_address,
-    }
+    hass.data.setdefault(DOMAIN, {})
 
-    await hass.async_create_task(
-        discovery.async_load_platform(hass, 'media_player', DOMAIN, {}, config)
-    )
+    for device in devices:
+        ip_address = device.get(CONF_HOST)
+        name = device.get(CONF_NAME)
+
+        hass.data[DOMAIN][ip_address] = {
+            CONF_HOST: ip_address,
+            CONF_NAME: name,
+        }
+
+        await hass.async_create_task(
+            discovery.async_load_platform(hass, 'media_player', DOMAIN, {
+                CONF_HOST: ip_address,
+                CONF_NAME: name,
+            }, config)
+        )
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
