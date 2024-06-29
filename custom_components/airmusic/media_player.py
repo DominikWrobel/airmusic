@@ -16,7 +16,7 @@ from homeassistant.components.media_player.const import (
     SUPPORT_PLAY_MEDIA,
     SUPPORT_BROWSE_MEDIA
 )
-from homeassistant.const import STATE_IDLE, STATE_PLAYING, STATE_PAUSED, CONF_HOST  # Import CONF_HOST
+from homeassistant.const import STATE_OFF, STATE_IDLE, STATE_PLAYING, STATE_PAUSED, CONF_HOST  # Import CONF_HOST
 
 from .airmusicapi import airmusic
 from .const import DOMAIN
@@ -57,7 +57,7 @@ class AirMusicDevice(MediaPlayerEntity):
     def __init__(self, hass, ip_address):
         self._hass = hass
         self._ip_address = ip_address
-        self._state = STATE_IDLE
+        self._state = STATE_OFF
         self._volume = 0
         self._muted = False
         self._source = None
@@ -65,7 +65,7 @@ class AirMusicDevice(MediaPlayerEntity):
         self._turn_off = self.turn_off
         self._turn_on = self.turn_on
         self._stop = self.stop
-        self._play_pause = self.play_pause
+        self._pause = self.pause
 
     @property
     def name(self):
@@ -104,8 +104,8 @@ class AirMusicDevice(MediaPlayerEntity):
         return self._stop
 
     @property
-    def play_pause(self):
-        return self._play_pause
+    def pause(self):
+        return self._pause
 
 
     @property
@@ -114,8 +114,8 @@ class AirMusicDevice(MediaPlayerEntity):
         
     async def async_update(self):
         try:
-            status = await self._hass.async_add_executor_job(self._airmusic.get_playinfo)
-            self._state = STATE_PLAYING if status == 'playing' else STATE_IDLE
+            self._state = await self._hass.async_add_executor_job(self._airmusic.get_playinfo)
+            self._state = STATE_PLAYING if self._state.get("sid") != 6 else STATE_PAUSED if self._state.get("sid") != 9 else STATE_IDLE
             self._muted = await self._hass.async_add_executor_job(self._airmusic.get_mute)
             self._volume = await self._hass.async_add_executor_job(self._airmusic.get_volume) / 30
         except Exception as e:
@@ -130,17 +130,29 @@ class AirMusicDevice(MediaPlayerEntity):
 #        except Exception as e:
 #            _LOGGER.error(f"Error updating AirMusic device: {e}")
 
-    async def async_media_play(self):
-        if await self._hass.async_add_executor_job(self._airmusic.play):
-            self._state = STATE_PLAYING
+#  def media_play(self):
+#        if self._state.get("sid") != 6:
+#            self._state = STATE_PLAYING
 
-    async def async_media_pause(self):
-        if await self._hass.async_add_executor_job(self._airmusic.pause):
-            self._state = STATE_PAUSED
+#    def media_pause(self):
+#        if self._state.get("sid") != 9:
+#            self._state = STATE_PAUSED
 
-    async def async_media_stop(self):
-        if await self._hass.async_add_executor_job(self._airmusic.stop):
-            self._state = STATE_IDLE
+#    def media_stop(self):
+#        if self._state.get("sid") != 1:
+#            self._state = STATE_IDLE
+
+#    async def async_media_play(self):
+#        if await self._hass.async_add_executor_job(self._airmusic.play):
+#            self._state = STATE_PLAYING
+
+#    async def async_media_pause(self):
+#       if await self._hass.async_add_executor_job(self._airmusic.pause):
+#            self._state = STATE_PAUSED
+
+#    async def async_media_stop(self):
+#        if await self._hass.async_add_executor_job(self._airmusic.stop):
+#            self._state = STATE_IDLE
 
     async def async_set_volume_level(self, volume):
         if await self._hass.async_add_executor_job(self._airmusic.set_volume, int (volume * 30)):
@@ -158,8 +170,8 @@ class AirMusicDevice(MediaPlayerEntity):
     def turn_off(self, turn_off):
         self._airmusic.turn_off = turn_off
         
-    def play_pause (self, play_pause):
-        self._aimusic.play_pause = play_pause
+    def pause (self, pause):
+        self._aimusic.pause = pause
 
     async def async_select_source(self, source):
         if source in SOURCES:
