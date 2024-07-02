@@ -109,7 +109,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._source = AirmusicMediaPlayerEntity.get_source
         self._image = AirmusicMediaPlayerEntity.get_image
         self._opener = AirmusicMediaPlayerEntity.get_opener
-        self._pwstate = True
+        self._pwstate = False #True
         self._volume = 0
         self._muted = False
         self._selected_source = ''
@@ -119,55 +119,55 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._source_names = {}
         self._sources = {}
 
-    # Run when added to HASS TO LOAD SOURCES
+    # Run when added to HASS TO LOAD CHANNELS
     async def async_added_to_hass(self):
         """Run when entity about to be added."""
         await super().async_added_to_hass()
         await self.load_sources()
       
-    # Load channels from specified sources
+    # Load channels from specified channels
     async def load_sources(self):
         """Initialize the Airmusic device loading the sources."""
         from bs4 import BeautifulSoup
         if self._source:
-            # Load user set sources.
-            _LOGGER.debug("Airmusic: [load_sources] - Request user sources %s ",
+            # Load user set channels.
+            _LOGGER.debug("Airmusic: [load_source] - Request user sources %s ",
                           self._source)
-            list_xml = await self.request_call('/list?id=1&start=1&count=20')
+            list_xml = await self.request_call('/list?id=75&start=1&count=20')
 
-            # Sources name
+            # Channel name
             soup = BeautifulSoup(list_xml, features = "xml")
             src_names = soup.find_all('name')
             self._source_names = [src_name.string for src_name in src_names]
-            # Source reference
+            # Channel reference
             src_references = soup.find_all('id')
             sources = [src_reference.string for src_reference in
                        src_references]
             self._sources = dict(zip(self._source_names, sources))
 
         else:
-            # Load sources from first bouquet.
-            reference = urllib.parse.quote_plus(await self.get_bouquet_reference())
+            # Load channels from first bouquet.
+            reference = urllib.parse.quote_plus(await self.get_sources_reference())
             _LOGGER.debug("Airmusic: [load_sources] - Request reference %s ",
                           reference)
-            list_xml = await self.request_call('/list?id=1&start=1&count=20')
+            list_xml = await self.request_call('/list?id=75&start=1&count=20')
 
-            # Sources name
+            # Channel name
             soup = BeautifulSoup(list_xml, features = "xml")
             src_names = soup.find_all('name')
             self._source_names = [src_name.string for src_name in src_names]
 
-            # Sources reference
+            # Channel reference
             src_references = soup.find_all('id')
             sources = [src_reference.string for src_reference in
                        src_references]
             self._sources = dict(zip(self._source_names, sources))
 
-    async def get_bouquet_reference(self):
+    async def get_sources_reference(self):
         """Import BeautifulSoup."""
         from bs4 import BeautifulSoup
         # Get first bouquet reference
-        list_xml = await self.request_call('/list?id=1&start=1&count=20')
+        list_xml = await self.request_call('/list?id=75&start=1&count=20')
         soup = BeautifulSoup(list_xml, features = "xml")
         return soup.find('status').renderContents().decode('UTF8')
 
@@ -179,7 +179,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         # Check if is password enabled
         if self._password is not None:
             # Handle HTTP Auth
-            async with self._opener.get(uri, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^', encoding='utf-8')) as resp: #auth=(self._username, self._password)
+            async with self._opener.get(uri, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^', encoding='utf-8')) as resp:
                 text = await resp.read()
                 return text
         else:
@@ -213,7 +213,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         
         if pwstate.find('2') >= 0:
             self._pwstate = 'false'
-        
+
         if pwstate.find('9') >= 0:
             self._pwstate = 'false'
 
@@ -243,7 +243,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
                 soup = BeautifulSoup(playinfo_xml, features = "xml")
                 eventtitle = soup.song.renderContents().decode('UTF8')
                 eventid = soup.artist.renderContents().decode('UTF8')
-                if self._password != DEFAULT_PASSWORD:
+#                if self._password != DEFAULT_PASSWORD:
                     # if image = album
 #                    if self._image == 'album':
 #                        self._image_url = 'http://' + \
@@ -255,15 +255,15 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 #                                           + '.jpg'
                     # otherwise try to get logo
 #                    else:
-                    self._image_url = 'http://' + \
-                                        self._username + ':' + \
-                                        self._password + \
-                                        '@' + self._host + ':' + \
-                                        str(self._port) + '/playlogo' + \
-                                        reference.replace(":", "_")[:-1] \
-                                        + '.jpg'
-                else:
-                    # if image = album
+#                    self._image_url = 'http://' + \
+#                                        self._username + ':' + \
+#                                        self._password + \
+#                                        '@' + self._host + ':' + \
+#                                        str(self._port) + '/playlogo' + \
+#                                        reference.replace(":", "_")[:-1] \
+#                                        + '.jpg'
+#                else:
+#                    # if image = album
 #                    if self._image == 'album':
 #                        self._image_url = 'http://' + \
 #                                           self._username + ':' + \
@@ -274,10 +274,10 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 #                                           + '.jpg'
                     # otherwise try to get logo
 #                    else:
-                    self._image_url = 'http://' + self._host + ':' + \
-                                        str(self._port) + '/playlogo' + \
-                                        reference.replace(":", "_")[:-1] \
-                                        + '.jpg'
+#                    self._image_url = 'http://' + self._host + ':' + \
+#                                        str(self._port) + '/playlogo' + \
+#                                        reference.replace(":", "_")[:-1] \
+#                                        + '.jpg'
             _LOGGER.debug("Airmusic: [update] - Eventtitle for host %s = %s",
                           self._host, eventtitle)
 
@@ -360,7 +360,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         _LOGGER.debug("Airmusic: [media_image_url] - %s", self._image_url)
         return self._image_url
 
-# GET - Current station
+# GET - Current source
     @property
     def source(self):
         """Return the current input source."""
@@ -371,17 +371,17 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         """Change to next channel."""
         return self._media_next_track
 
-# GET - Current list
+# GET - Current source list
     @property
     def source_list(self):
         """List of available input sources."""
         return self._source_names
 
-# SET - Change station - From dropbox menu
+# SET - Change source - From dropbox menu
     async def async_select_source(self, source):
         """Select input source."""
         _LOGGER.debug("Airmusic: [async_select_source] - Change radio source")
-        await self.request_call('/gochild?id=' + self._sources[source]) # '/web/zap?sRef=' + 
+        await self.request_call('/play_stn?id=' + self._sources[source])
 
 # SET - Volume up
     async def async_volume_up(self):
@@ -403,7 +403,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def async_mute_volume(self, mute):
         """Mute or unmute media player."""
         await self.request_call('/Sendkey?key=8')
-        self.async_update()
+#        self.async_update()
 
 # SET - Media Play/pause
     async def async_media_play_pause(self):
@@ -430,6 +430,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def async_turn_off(self):
         """Turn off media player."""
         await self.request_call('/Sendkey?key=7')
+#        self.async_update()
 
 # SET - Next station
     async def async_media_next_track(self):
@@ -443,7 +444,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 
 # SET - Change to source
     async def async_play_media(self, media_type, media_id, **kwargs):
-        """Support changing a channel."""
+        """Support changing a source."""
         if media_type != MEDIA_TYPE_CHANNEL:
             _LOGGER.error('Unsupported media type')
             return
@@ -463,6 +464,6 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 #                channel_digit = '11'
 #            else:
 #                channel_digit = int(digit)+1
-        await self.request_call('/gochild?id=' + str(media_id))
+        await self.request_call('/play_stn?id=' + self._sources[source])
 
 
