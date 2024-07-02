@@ -131,7 +131,7 @@ class AirmusicDevice(Entity):
         self._timeout = timeout
         self._source = source
         self._image = image
-        self._pwstate = True
+        self._pwstate = False #True
         self._volume = 0
         self._muted = False
         self._selected_source = ''
