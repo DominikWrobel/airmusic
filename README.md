@@ -40,7 +40,7 @@ custom_components
 It is possible to add it as a custom repository.
 
 If you are using HACS, go to HACS -> Integrations and click on the 3 dots (top righ corner).
-Then choose custom repositories, and add this repository url (https://github.com/DominikWrobel/airmusic/tree/main), choosing the Integration category.
+Then choose custom repositories, and add this repository url (https://github.com/DominikWrobel/airmusic), choosing the Integration category.
 
 That's it, and you will be notified by HACS on every release.
 Just click on upgrade.
