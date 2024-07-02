@@ -63,7 +63,7 @@ The Internet radios need to have static IP set up.
   - the device should be turned off when restarting Home Assistant
   - you may need to send init command before restarting HA, you can do this by typing in web browser: (http://192.168.0.248/init) or using curl: (curl -H 'Authorization: Basic c3UzZzRnbzZzazc6amkzOTQ1NHh1L14=' http://192.168.0.142/init)
   - after some time the radio may need to send init again
-  - there is no real way to see if the radio is in stanby mode, so the integration usus the value SID=1 when in stanby, but this also says the playback is stopped.
+  - there is no real way to see if the radio is in stanby mode, so the integration uses the value SID=1 when in stanby, but this also says the playback is stopped.
 
 ![1](https://github.com/DominikWrobel/airmusic/assets/89667597/28fb6ac6-ef21-4552-a183-397a5ac08825)
 
