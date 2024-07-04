@@ -54,7 +54,7 @@ from .airmusicapi import airmusic
 # DEFAULTS
 DEFAULT_PORT = 8080
 DEFAULT_NAME = "Airmusic Radio"
-DEFAULT_TIMEOUT = 30
+DEFAULT_TIMEOUT = 100
 DEFAULT_USERNAME = 'roosu3g4go6sk7'
 DEFAULT_PASSWORD = 'ji39454xu/^'
 DEFAULT_SOURCE = ''
