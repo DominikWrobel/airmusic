@@ -188,6 +188,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
                 return text
 
     # Component Update
+    # Component Update
     @Throttle(MIN_TIME_BETWEEN_SCANS)
     async def async_update(self):
         """Import BeautifulSoup."""
@@ -195,26 +196,17 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         # Get the latest details from the device.
         _LOGGER.debug("Airmusic: [update] - request for host %s (%s)", self._host,
                      self._name)
-        background_play_status_xml = await self.request_call('/background_play_status')
-        powerstate_soup = BeautifulSoup(background_play_status_xml, features = "xml")
-        pwstate = powerstate_soup.sid.renderContents().decode('UTF8')
+        playinfo_xml = await self.request_call('/playinfo')
+        soup = BeautifulSoup(playinfo_xml, features = "xml")
+        pwstate = soup.result.renderContents().decode('UTF8')
         self._pwstate = ''
 
         _LOGGER.debug("Airmusic: [update] - Powerstate for host %s = %s",
                       self._host, pwstate)
-        if pwstate.find('1') >= 0:
+        if pwstate.find('FAIL') >= 0:
             self._pwstate = 'true'
 
-        if pwstate.find('0') >= 0:
-            self._pwstate = 'true'
-
-        if pwstate.find('6') >= 0:
-            self._pwstate = 'false'
-        
-        if pwstate.find('2') >= 0:
-            self._pwstate = 'false'
-
-        if pwstate.find('9') >= 0:
+        if pwstate.find('sid') >= 0:
             self._pwstate = 'false'
 
         # If name was not defined, get the name from the box
