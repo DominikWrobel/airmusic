@@ -16,7 +16,7 @@ from homeassistant.helpers import config_validation as cv, discovery
 from homeassistant.helpers.entity import Entity
 
 # VERSION
-VERSION = '0.1'
+VERSION = '0.2'
 
 # REQUIREMENTS
 REQUIREMENTS = ['beautifulsoup4==4.6.3']
@@ -33,7 +33,7 @@ SUPPORTED_DOMAINS = ['media_player']
 # DEFAULTS
 DEFAULT_PORT = 8080
 DEFAULT_NAME = "Airmusic Radio"
-DEFAULT_TIMEOUT = 100
+DEFAULT_TIMEOUT = 50
 DEFAULT_USERNAME = 'roosu3g4go6sk7'
 DEFAULT_PASSWORD = 'ji39454xu/^'
 DEFAULT_SOURCE = ''
@@ -136,6 +136,7 @@ class AirmusicDevice(Entity):
         self._muted = False
         self._selected_source = ''
         self._image_url = None
+        self._init = None
         self._source_names = {}
         self._sources = {}
         # Opener for http connection
