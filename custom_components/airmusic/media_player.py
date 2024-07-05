@@ -50,7 +50,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
 
 # VERSION
-VERSION = '0.2'
+VERSION = '0.3'
 
 # Dependencies
 from .airmusicapi import airmusic
@@ -121,7 +121,6 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._selected_media_content_id = ''
         self._selected_media_title = ''
         self._image_url = None
-        self._init = ''
         self._source_names = {}
         self._sources = {}
 
@@ -212,7 +211,8 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             self._pwstate = 'true'
 
         if pwstate.find('INVALID_CMD') >= 0:
-            self._pwstate = 'init'
+            init_xml = await self.request_call('/init')
+            self._pwstate = 'idle'
 
         if pwstate.find('sid>1') >= 0:
             self._pwstate = 'idle'
@@ -225,16 +225,6 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 
         if pwstate.find('sid>9') >= 0:
             self._pwstate = 'paused'
-
-        # If name was not defined, get the name from the box
-        if self._name == 'Airmusic Radio':
-            init_xml = await self.request_call('/init')
-            soup = BeautifulSoup(init_xml, features = "xml")
-            name = soup.PlayMode.renderContents().decode('UTF8')
-            _LOGGER.debug("Airmusic: [update] - Name for host %s = %s",
-                          self._host, name)
-            if name:
-                self._name = name
 
         # If powered on
         if self._pwstate == 'playing':
@@ -337,7 +327,6 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             return STATE_PLAYING
         if self._pwstate == "init":
             return self._init
-#            self.request_call('/init')
 
         return STATE_UNKNOWN
 
@@ -459,18 +448,12 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 # SET - Next station
     async def async_media_next_track(self):
         """Change to next channel."""
-        await self.request_call('/Sendkey?key=31')
+        await self.request_call('/Sendkey?key=2')
 
 # SET - Previous station
     async def async_media_previous_track(self):
         """Change to previous channel."""
-        await self.request_call('/Sendkey?key=31')
-
-# SET - Init
-    async def async_init(self):
-        """Init."""
-        await self.request_call('/init')
-        self.async_update()
+        await self.request_call('/Sendkey?key=3')
 
 # SET - Change to source
     async def async_play_media(self, media_type, media_id, **kwargs):
@@ -495,3 +478,8 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 #            else:
 #                channel_digit = int(digit)+1
         await self.request_call('/play_stn?id=' + self._sources[source])
+
+
+
+
+
