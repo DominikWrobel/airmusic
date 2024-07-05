@@ -16,7 +16,7 @@ from homeassistant.helpers import config_validation as cv, discovery
 from homeassistant.helpers.entity import Entity
 
 # VERSION
-VERSION = '0.2'
+VERSION = '0.3'
 
 # REQUIREMENTS
 REQUIREMENTS = ['beautifulsoup4==4.6.3']
@@ -136,7 +136,6 @@ class AirmusicDevice(Entity):
         self._muted = False
         self._selected_source = ''
         self._image_url = None
-        self._init = None
         self._source_names = {}
         self._sources = {}
         # Opener for http connection
