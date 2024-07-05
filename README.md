@@ -1,6 +1,6 @@
 # Readme
 
-This is a custom component for the media_player platform of [Home Assistant][1].
+This is a custom component for the media_player platform of Home Assistant.
 
 It allows you to remotely control your AirMusic compatible internet radios. Should work with any radio using the AirMusic Android and iOS app for control.
 
@@ -12,6 +12,7 @@ It allows you to remotely control your AirMusic compatible internet radios. Shou
   - Change radio channel (Selecting from source list)
   - Current radio channel and current event
   - Supports authentication and multiple receivers
+  - self INIT
 
 # What is not working right now:
   - No source selection, only Internet Radio is available
@@ -61,8 +62,6 @@ The Internet radios need to have static IP set up.
 # Known problems with installation
 
   - the device should be turned off when restarting Home Assistant
-  - you may need to send init command before restarting HA, you can do this by typing in web browser: (http://192.168.0.248/init) or using curl: (curl -H 'Authorization: Basic c3UzZzRnbzZzazc6amkzOTQ1NHh1L14=' http://192.168.0.142/init)
-  - after some time the radio may need to send init again
 
 ![1](https://github.com/DominikWrobel/airmusic/assets/89667597/28fb6ac6-ef21-4552-a183-397a5ac08825)
 
