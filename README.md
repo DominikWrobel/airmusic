@@ -31,7 +31,7 @@ The custom components directory is inside your Home Assistant configuration dire
 This is how your custom_components directory should be:
 ```bash
 custom_components
-├── enigma
+├── airmusic
 │   ├── __init__.py
 │   ├── media_player.py
 │   ├── manifest.json
