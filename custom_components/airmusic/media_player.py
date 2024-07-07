@@ -14,8 +14,8 @@ import urllib.parse
 import urllib.request
 import aiohttp
 import voluptuous as vol
-from datetime import timedelta
-from urllib.error import HTTPError, URLError
+import requests
+from requests.auth import HTTPBasicAuth
 
 # From homeassitant
 
@@ -234,54 +234,12 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             reference = soup.sid.renderContents().decode('UTF8')
             eventtitle = soup.song.renderContents().decode('UTF8')
             eventid = soup.artist.renderContents().decode('UTF8')
-#            self._image_url = 'http://' + self._host + ':' + \
-#                                        str(self._port) + '/playlogo' + \
-#                                        reference.replace(":", "_")[:-1] \
-#                                        + '.jpg'
-#            eventartist = 'N/A'
-#            eventid = 'N/A'
-            # If we got a valid reference, check the title of the event and
-            # the logo url
-#            if reference == '6' and reference != 'N/A':
-#            xml = await self.request_call('/playinfo')
-#            soup = BeautifulSoup(playinfo_xml, features = "xml")
-#            eventtitle = soup.song.renderContents().decode('UTF8')
-#            eventid = soup.artist.renderContents().decode('UTF8')
-#                if self._password != DEFAULT_PASSWORD:
-#                    # if image = album
-#                    if self._image == 'album':
-#                        self._image_url = 'http://' + \
-#                                           self._username + ':' + \
-#                                           self._password + \
-#                                           '@' + self._host + ':' + \
-#                                           str(self._port) + '/album' + \
-#                                           reference.replace(":", "_")[:-1] \
-#                                           + '.jpg'
-#                    # otherwise try to get logo
-#                    else:
-#                        self._image_url = 'http://' + \
-#                                        self._username + ':' + \
-#                                        self._password + \
-#                                        '@' + self._host + ':' + \
-#                                        str(self._port) + '/playlogo' + \
-#                                        reference.replace(":", "_")[:-1] \
-#                                        + '.jpg'
-#                else:
-#                    # if image = album
-#                    if self._image == 'album':
-#                        self._image_url = 'http://' + \
-#                                           self._username + ':' + \
-#                                           self._password + \
-#                                           '@' + self._host + ':' + \
-#                                           str(self._port) + '/album' + \
-#                                           reference.replace(":", "_")[:-1] \
-#                                           + '.jpg'
-#                    # otherwise try to get logo
-#                    else:
-#                        self._image_url = 'http://' + self._host + ':' + \
-#                                        str(self._port) + '/playlogo' + \
-#                                        reference.replace(":", "_")[:-1] \
-#                                        + '.jpg'
+            response = await self.hass.async_add_executor_job(
+                requests.get,
+                'http://''su3g4go6sk7:ji39454xu%2F%5E@' + self._host + ':' + str(self._port) + '/playlogo.jpg',
+            )
+            self._image_url = response.url
+
             _LOGGER.debug("Airmusic: [update] - Eventtitle for host %s = %s",
                           self._host, eventtitle)
             # Info of selected source and title
