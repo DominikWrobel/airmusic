@@ -1,6 +1,6 @@
 # Readme
 
-This is a custom component for the media_player platform of [Home Assistant][1].
+This is a custom component for the media_player platform of Home Assistant.
 
 It allows you to remotely control your AirMusic compatible internet radios. Should work with any radio using the AirMusic Android and iOS app for control.
 
@@ -31,7 +31,7 @@ The custom components directory is inside your Home Assistant configuration dire
 This is how your custom_components directory should be:
 ```bash
 custom_components
-├── enigma
+├── airmusic
 │   ├── __init__.py
 │   ├── media_player.py
 │   ├── manifest.json
