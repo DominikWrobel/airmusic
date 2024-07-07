@@ -234,11 +234,11 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             reference = soup.sid.renderContents().decode('UTF8')
             eventtitle = soup.song.renderContents().decode('UTF8')
             eventid = soup.artist.renderContents().decode('UTF8')
-            response = await self.hass.async_add_executor_job(
-                requests.get,
-                'http://''su3g4go6sk7:ji39454xu%2F%5E@' + self._host + ':' + str(self._port) + '/playlogo.jpg'
-            )
-            self._image_url = response.url
+#            response = await self.hass.async_add_executor_job(
+#                requests.get,
+#                'http://''su3g4go6sk7:ji39454xu%2F%5E@' + self._host + ':' + str(self._port) + '/playlogo.jpg'
+#            )
+#            self._image_url = response.url
 
             _LOGGER.debug("Airmusic: [update] - Eventtitle for host %s = %s",
                           self._host, eventtitle)
