@@ -122,6 +122,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._image_url = {}
         self._source_names = {}
         self._sources = {}
+        self._unique_id = f"{self._host}-{self._name}"
 
     # Run when added to HASS TO LOAD CHANNELS
     async def async_added_to_hass(self):
@@ -364,6 +365,12 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         """List of available input sources."""
         return self._source_names
 
+# GET - Unique ID
+    @property
+    def unique_id(self):
+        """Return the unique ID of the device."""
+        return self._unique_id
+
 # SET - Change source - From dropbox menu
     async def async_select_source(self, source):
         """Select input source."""
@@ -452,6 +459,10 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 #            else:
 #                channel_digit = int(digit)+1
         await self.request_call('/play_stn?id=' + self._sources[source])
+
+
+
+
 
 
 
