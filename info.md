@@ -13,10 +13,10 @@ It allows you to remotely control your AirMusic compatible internet radios. Shou
   - Current radio channel and current event
   - Supports authentication and multiple receivers
   - Self INIT
+  - Station Logos are working from v0.4
 
 # What is not working right now:
   - No source selection, only Internet Radio is available
-  - No icon of current station, for radios with authantication I can't get it to work, for the ones without the image does not update when changing station
 
 # Minimum Requirements
   - Homeassistant core 2024.5.0
@@ -61,7 +61,7 @@ The Internet radios need to have static IP set up.
 
 # Known problems with installation
 
-  - the device should be turned off when restarting Home Assistant
+  - the device should be turned off when restarting Home Assistant, needs more testing! If you get an error while the radio is off try turning it on to a internet radio station before restart.
 
 ![1](https://github.com/DominikWrobel/airmusic/assets/89667597/28fb6ac6-ef21-4552-a183-397a5ac08825)
 
