@@ -16,7 +16,7 @@ from homeassistant.helpers import config_validation as cv, discovery
 from homeassistant.helpers.entity import Entity
 
 # VERSION
-VERSION = '0.3'
+VERSION = '0.4'
 
 # REQUIREMENTS
 REQUIREMENTS = ['beautifulsoup4==4.6.3']
@@ -131,11 +131,11 @@ class AirmusicDevice(Entity):
         self._timeout = timeout
         self._source = source
         self._image = image
-        self._pwstate = False #True
+        self._pwstate = False
         self._volume = 0
         self._muted = False
         self._selected_source = ''
-        self._image_url = None
+        self._image_url = {}
         self._source_names = {}
         self._sources = {}
         # Opener for http connection
@@ -185,3 +185,4 @@ class AirmusicDevice(Entity):
     def get_opener(self):
         """Return the socket of the device."""
         return self._opener
+
