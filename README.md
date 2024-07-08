@@ -14,6 +14,7 @@ It allows you to remotely control your AirMusic compatible internet radios. Shou
   - Supports authentication and multiple receivers
   - Self INIT
   - Station logos work from v0.4
+  - Unique ID is now working
 
 # What is not working right now:
   - No source selection, only Internet Radio is available
