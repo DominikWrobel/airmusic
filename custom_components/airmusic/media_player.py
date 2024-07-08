@@ -9,13 +9,12 @@ Support for Airmusic Internet Radios.
 # Imports and dependencies
 import asyncio
 from datetime import timedelta
+import time
 from urllib.error import HTTPError, URLError
 import urllib.parse
 import urllib.request
 import aiohttp
 import voluptuous as vol
-import requests
-from requests.auth import HTTPBasicAuth
 
 # From homeassitant
 
@@ -50,7 +49,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
 
 # VERSION
-VERSION = '0.3'
+VERSION = '0.4'
 
 # Dependencies
 from .airmusicapi import airmusic
@@ -114,13 +113,13 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._source = AirmusicMediaPlayerEntity.get_source
         self._image = AirmusicMediaPlayerEntity.get_image
         self._opener = AirmusicMediaPlayerEntity.get_opener
-        self._pwstate = False #True
+        self._pwstate = False
         self._volume = 0
         self._muted = False
         self._selected_source = ''
         self._selected_media_content_id = ''
         self._selected_media_title = ''
-        self._image_url = None
+        self._image_url = {}
         self._source_names = {}
         self._sources = {}
 
@@ -179,7 +178,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     # Asnc API requests
     async def request_call(self, url):
         """Call web API request."""
-        uri = 'http://' + self._host + ":" + url
+        uri = 'http://' + self._host + url
         _LOGGER.debug("Airmusic: [request_call] - Call request %s ", uri)
         # Check if is password enabled
         if self._password is not None:
@@ -230,22 +229,22 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         if self._pwstate == 'playing':
             playinfo_xml = await self.request_call('/playinfo')
             soup = BeautifulSoup(playinfo_xml, features = "xml")
-            servicename = soup.station_info.renderContents().decode('UTF8')
             reference = soup.sid.renderContents().decode('UTF8')
-            eventtitle = soup.song.renderContents().decode('UTF8')
-            eventid = soup.artist.renderContents().decode('UTF8')
-#            response = await self.hass.async_add_executor_job(
-#                requests.get,
-#                'http://''su3g4go6sk7:ji39454xu%2F%5E@' + self._host + ':' + str(self._port) + '/playlogo.jpg'
-#            )
-#            self._image_url = response.url
+            servicename = soup.station_info.renderContents().decode('UTF8') if soup.station_info else None
+            eventtitle = soup.song.renderContents().decode('UTF8') if soup.song else None
+            eventid = soup.artist.renderContents().decode('UTF8') if soup.artist else None
 
             _LOGGER.debug("Airmusic: [update] - Eventtitle for host %s = %s",
                           self._host, eventtitle)
             # Info of selected source and title
             self._selected_source = servicename 
             self._selected_media_content_id = eventid
-            self._selected_media_title = servicename + ' - ' + eventid + ' - ' + eventtitle
+            self._selected_media_title = ' - '.join(filter(None, [servicename, eventid, eventtitle])) or None
+
+            self._image_url = f'http://{self._host}:{self._port}/playlogo.jpg'
+
+        else:
+            self._image_url = None
 
         # Check volume and if is muted and update self variables
         if self._pwstate in ['playing','idle','buffering','paused']:
@@ -324,12 +323,29 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         """Title of current playing media."""
         return self._selected_media_title
 
-# GET - Content image
+# GET - Radio station logo
     @property
     def media_image_url(self):
         """Image of current playing media."""
-        _LOGGER.debug("Airmusic: [media_image_url] - %s", self._image_url)
-        return self._image_url
+        _LOGGER.debug("Airmusic: [media_image_url] - Using proxy for image URL: %s", self._image_url)
+        return self.get_browse_image_url('music', self._selected_media_content_id or "None")
+        
+    async def async_get_browse_image(self, media_content_type, media_content_id, media_image_id=None):
+        """Serve album art. Returns (content, content_type)."""
+        image_url = f'http://{self._host}:{self._port}/playlogo.jpg'
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(image_url, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^')) as response:
+                    if response.status == 200:
+                        content = await response.read()
+                        return content, response.content_type
+                    else:
+                        _LOGGER.error("Failed to fetch image: %s", response.status)
+                        return None, None
+        except aiohttp.ClientError as e:
+            _LOGGER.error("ClientError while fetching image: %s", str(e))
+            return None, None
 
 # GET - Current source
     @property
@@ -436,6 +452,11 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 #            else:
 #                channel_digit = int(digit)+1
         await self.request_call('/play_stn?id=' + self._sources[source])
+
+
+
+
+
 
 
 
