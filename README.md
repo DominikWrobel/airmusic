@@ -12,7 +12,7 @@ It allows you to remotely control your AirMusic compatible internet radios. Shou
   - Change radio channel (Selecting from source list)
   - Current radio channel and current event
   - Supports authentication and multiple receivers
-  - Self INIT
+  - Self INIT, after init the radio will turn off
   - Station logos work from v0.4
   - Unique ID is now working
 
