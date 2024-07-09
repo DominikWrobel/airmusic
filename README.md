@@ -12,12 +12,13 @@ It allows you to remotely control your AirMusic compatible internet radios. Shou
   - Change radio channel (Selecting from source list)
   - Current radio channel and current event
   - Supports authentication and multiple receivers
-  - Self INIT, after init the radio will turn off
+  - Self INIT, after init the radio will go into standby mode
   - Station logos work from v0.4
   - Unique ID is now working
 
 # What is not working right now:
   - No source selection, only Internet Radio is available
+  - This integration will work correctly only in Internet Redio mode
 
 # Minimum Requirements
   - Homeassistant core 2024.5.0
@@ -38,7 +39,7 @@ custom_components
 │   ├── manifest.json
 │   └── airmusicapi.py
 ```
-# Install with HACS:
+# Install with HACS recomended:
 It is possible to add it as a custom repository.
 
 If you are using HACS, go to HACS -> Integrations and click on the 3 dots (top righ corner).
@@ -62,7 +63,8 @@ The Internet radios need to have static IP set up.
 
 # Known problems with installation
 
-  - the device should be turned off when restarting Home Assistant, needs more testing! If you get an error while the radio is off try turning it on to a internet radio station before restart.
+  - At first installation the radio will receive init command, it may not work at first, try to turn on or off the radio and restart Home Assistant.
+  - Do not use at the same time this integration and the AirMusic app or any other form of connecting to the radio via internet, it may cause the radio to freeze.
 
 
 ![1](https://github.com/DominikWrobel/airmusic/assets/89667597/c4b380e1-ffc7-4af3-84a3-8b54ec463657)
@@ -71,7 +73,7 @@ The Internet radios need to have static IP set up.
 
 # Remote
 
-I've added a simple remote at (https://github.com/DominikWrobel/airmusic/tree/main/remote) using shell_command and button cards.
+I've added a simple remote at (https://github.com/DominikWrobel/airmusic/tree/main/remote) using shell_command and button cards. Remote can be used with or without this integration.
 
 # Special thanks to:
 
