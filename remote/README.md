@@ -4,7 +4,9 @@ Using shell_command.yaml which you add to your configuration.yaml and remote.yam
 
 ![remote](https://github.com/DominikWrobel/airmusic/assets/89667597/0eed7dc5-3f92-4b3b-89c2-7309967f85a0)
 
-# Available remote buttons, change the value at the end of Sendkey?key=
+# Available remote buttons
+
+Change the value at the end of Sendkey?key=
 
 |ID |   Function    |
 |---|---------------|
