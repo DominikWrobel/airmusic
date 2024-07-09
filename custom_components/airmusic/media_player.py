@@ -49,7 +49,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
 
 # VERSION
-VERSION = '0.4'
+VERSION = '0.5'
 
 # Dependencies
 from .airmusicapi import airmusic
@@ -213,6 +213,8 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         if pwstate.find('INVALID_CMD') >= 0:
             init_xml = await self.request_call('/init')
             self._pwstate = 'idle'
+            await asyncio.sleep(10)
+            init_xml = await self.request_call('/Sendkey?key=7')
 
         if pwstate.find('sid>1') >= 0:
             self._pwstate = 'idle'
@@ -331,6 +333,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         _LOGGER.debug("Airmusic: [media_image_url] - Using proxy for image URL: %s", self._image_url)
         return self.get_browse_image_url('music', self._selected_media_content_id or "None")
         
+    @Throttle(MIN_TIME_BETWEEN_SCANS)    
     async def async_get_browse_image(self, media_content_type, media_content_id, media_image_id=None):
         """Serve album art. Returns (content, content_type)."""
         image_url = f'http://{self._host}:{self._port}/playlogo.jpg'
@@ -459,6 +462,8 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 #            else:
 #                channel_digit = int(digit)+1
         await self.request_call('/play_stn?id=' + self._sources[source])
+
+
 
 
 
