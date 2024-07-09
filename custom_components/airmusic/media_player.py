@@ -1,6 +1,3 @@
-"""
-Support for Airmusic Internet Radios.
-"""
 #
 # For more details, please refer to github at
 # https://github.com/DominikWrobel/airmusic
@@ -49,7 +46,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
 
 # VERSION
-VERSION = '0.5'
+VERSION = '0.6'
 
 # Dependencies
 from .airmusicapi import airmusic
@@ -64,7 +61,7 @@ DEFAULT_SOURCE = ''
 DEFAULT_IMAGE = 'logo'
 
 # Return cached results if last scan was less then this time ago.
-MIN_TIME_BETWEEN_SCANS = timedelta(seconds=10)
+MIN_TIME_BETWEEN_SCANS = timedelta(seconds=8)
 MIN_TIME_BETWEEN_FORCED_SCANS = timedelta(seconds=5)
 
 SUPPORT_AIRMUSIC = (
@@ -330,8 +327,13 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     @property
     def media_image_url(self):
         """Image of current playing media."""
-        _LOGGER.debug("Airmusic: [media_image_url] - Using proxy for image URL: %s", self._image_url)
-        return self.get_browse_image_url('music', self._selected_media_content_id or "None")
+        if self._image_url:
+            _LOGGER.debug("Airmusic: [media_image_url] - Using proxy for image URL: %s", self._image_url)
+            if self._selected_media_content_id:
+                return self.get_browse_image_url('music', self._selected_media_content_id)
+            else:
+                return self.get_browse_image_url('music', 'default_id')
+        return None
         
     @Throttle(MIN_TIME_BETWEEN_SCANS)    
     async def async_get_browse_image(self, media_content_type, media_content_id, media_image_id=None):
@@ -432,12 +434,12 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 # SET - Next station
     async def async_media_next_track(self):
         """Change to next channel."""
-        await self.request_call('/Sendkey?key=2')
+        await self.request_call('/Sendkey?key=31')
 
 # SET - Previous station
     async def async_media_previous_track(self):
         """Change to previous channel."""
-        await self.request_call('/Sendkey?key=3')
+        await self.request_call('/Sendkey?key=32')
 
 # SET - Change to source
     async def async_play_media(self, media_type, media_id, **kwargs):
@@ -462,6 +464,10 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 #            else:
 #                channel_digit = int(digit)+1
         await self.request_call('/play_stn?id=' + self._sources[source])
+
+
+
+
 
 
 
