@@ -64,9 +64,14 @@ The Internet radios need to have static IP set up.
 
   - the device should be turned off when restarting Home Assistant, needs more testing! If you get an error while the radio is off try turning it on to a internet radio station before restart.
 
-![1](https://github.com/DominikWrobel/airmusic/assets/89667597/28fb6ac6-ef21-4552-a183-397a5ac08825)
+
+![1](https://github.com/DominikWrobel/airmusic/assets/89667597/c4b380e1-ffc7-4af3-84a3-8b54ec463657)
 
 ![2](https://github.com/DominikWrobel/airmusic/assets/89667597/a22cdfd1-31da-4774-9fd4-916758d5e019)
+
+# Remote
+
+I've added a simple remote at (https://github.com/DominikWrobel/airmusic/tree/main/remote) using shell_command and button cards.
 
 # Special thanks to:
 
