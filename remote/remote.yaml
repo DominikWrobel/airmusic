@@ -1,0 +1,219 @@
+type: vertical-stack
+cards:
+  - square: true
+    columns: 3
+    type: grid
+    cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        entity: media_player.radio_lazienka
+        icon: mdi:power
+        show_state: false
+        tap_action:
+          action: toggle
+        hold_action:
+          action: none
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_up
+          service_data: {}
+          target: {}
+        entity: ''
+        icon: mdi:arrow-up-bold
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_mute
+          service_data: {}
+          target: {}
+        icon: mdi:volume-mute
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_left
+          service_data: {}
+          target: {}
+        icon: mdi:arrow-left-bold
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_enter
+          service_data: {}
+          target: {}
+        icon: mdi:circle-slice-8
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_right
+          service_data: {}
+          target: {}
+        icon: mdi:arrow-right-bold
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_vol_up
+          service_data: {}
+          target: {}
+        icon: mdi:volume-plus
+        show_state: true
+        hold_action:
+          action: none
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_down
+          service_data: {}
+          target: {}
+        icon: mdi:arrow-down-bold
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_vol_down
+          service_data: {}
+          target: {}
+        icon: mdi:volume-minus
+        show_state: true
+        hold_action:
+          action: none
+  - square: false
+    columns: 3
+    type: grid
+    cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_1
+          service_data: {}
+          target: {}
+        icon: mdi:numeric-1
+        name: Muzo.fm
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_2
+          service_data: {}
+          target: {}
+        name: Antyradio
+        icon: mdi:numeric-2
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_3
+          service_data: {}
+          target: {}
+        icon: mdi:numeric-3
+        name: RockRadio
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_4
+          service_data: {}
+          target: {}
+        icon: mdi:numeric-4
+        name: EskaRock
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_5
+          service_data: {}
+          target: {}
+        icon: mdi:numeric-5
+        name: Nowy Świat
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_6
+          service_data: {}
+          target: {}
+        icon: mdi:numeric-6
+        name: Złote Przeboje
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_7
+          service_data: {}
+          target: {}
+        icon: mdi:numeric-7
+        name: MeloRadio
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_8
+          service_data: {}
+          target: {}
+        icon: mdi:numeric-8
+        name: Tok FM
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_9
+          service_data: {}
+          target: {}
+        icon: mdi:numeric-9
+        name: Radio 357
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_net
+          service_data: {}
+          target: {}
+        name: Net
+        icon: mdi:wifi
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_fm
+          service_data: {}
+          target: {}
+        name: FM
+        icon: mdi:radio-fm
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: shell_command.lazienka_mode
+          service_data: {}
+          target: {}
+        icon: mdi:radio
+        name: Mode
