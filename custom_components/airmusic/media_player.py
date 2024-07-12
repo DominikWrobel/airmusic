@@ -12,6 +12,9 @@ import urllib.parse
 import urllib.request
 import aiohttp
 import voluptuous as vol
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 # From homeassitant
 
@@ -46,7 +49,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
 
 # VERSION
-VERSION = '0.6'
+VERSION = '0.7'
 
 # Dependencies
 from .airmusicapi import airmusic
@@ -117,6 +120,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._selected_media_content_id = ''
         self._selected_media_title = ''
         self._image_url = {}
+        self._source_name = None
         self._source_names = {}
         self._sources = {}
         self._unique_id = f"{self._host}-{self._name}"
@@ -127,7 +131,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         await super().async_added_to_hass()
         await self.load_sources()
       
-    # Load channels from specified channels
+    # Load favorite radio stations
     async def load_sources(self):
         """Initialize the Airmusic device loading the sources."""
         from bs4 import BeautifulSoup
@@ -178,16 +182,9 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         """Call web API request."""
         uri = 'http://' + self._host + url
         _LOGGER.debug("Airmusic: [request_call] - Call request %s ", uri)
-        # Check if is password enabled
-        if self._password is not None:
-            # Handle HTTP Auth
-            async with self._opener.get(uri, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^', encoding='utf-8')) as resp:
-                text = await resp.read()
-                return text
-        else:
-            async with self._opener.get(uri, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^', encoding='utf-8')) as resp:
-                text = await resp.read()
-                return text
+        async with self._opener.get(uri, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^', encoding='utf-8')) as resp:
+            text = await resp.read()
+            return text
 
     # Component Update
     @Throttle(MIN_TIME_BETWEEN_SCANS)
@@ -230,7 +227,13 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             playinfo_xml = await self.request_call('/playinfo')
             soup = BeautifulSoup(playinfo_xml, features = "xml")
             reference = soup.sid.renderContents().decode('UTF8')
-            servicename = soup.station_info.renderContents().decode('UTF8') if soup.station_info else None
+            station_info_content = soup.result.renderContents().decode('UTF8')
+            station_info = soup.station_info.renderContents().decode('UTF8') if soup.station_info else None
+            servicename = '' 
+            if station_info_content.find('<station_info>') >= 0:
+                servicename = station_info
+            else:
+                servicename = self._source_name
             eventtitle = soup.song.renderContents().decode('UTF8') if soup.song else None
             eventid = soup.artist.renderContents().decode('UTF8') if soup.artist else None
 
@@ -329,14 +332,14 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         """Image of current playing media."""
         if self._image_url:
             _LOGGER.debug("Airmusic: [media_image_url] - Using proxy for image URL: %s", self._image_url)
-            if self._selected_media_content_id:
-                return self.get_browse_image_url('music', self._selected_media_content_id)
+            if self._selected_source:
+                return self.get_browse_image_url('music', self._selected_source)
             else:
                 return self.get_browse_image_url('music', 'default_id')
         return None
         
     @Throttle(MIN_TIME_BETWEEN_SCANS)    
-    async def async_get_browse_image(self, media_content_type, media_content_id, media_image_id=None):
+    async def async_get_browse_image(self, media_content_type, selected_source, media_image_id=None):
         """Serve album art. Returns (content, content_type)."""
         image_url = f'http://{self._host}:{self._port}/playlogo.jpg'
 
@@ -381,6 +384,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         """Select input source."""
         _LOGGER.debug("Airmusic: [async_select_source] - Change radio source")
         await self.request_call('/play_stn?id=' + self._sources[source])
+        self._source_name = source
 
 # SET - Volume up
     async def async_volume_up(self):
@@ -464,12 +468,6 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 #            else:
 #                channel_digit = int(digit)+1
         await self.request_call('/play_stn?id=' + self._sources[source])
-
-
-
-
-
-
 
 
 
