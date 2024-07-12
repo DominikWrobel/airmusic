@@ -16,7 +16,7 @@ from homeassistant.helpers import config_validation as cv, discovery
 from homeassistant.helpers.entity import Entity
 
 # VERSION
-VERSION = '0.6'
+VERSION = '0.7'
 
 # REQUIREMENTS
 REQUIREMENTS = ['beautifulsoup4==4.6.3']
