@@ -5,7 +5,7 @@
 
 # Imports and dependencies
 import asyncio
-from datetime import timedelta
+from datetime import time, timedelta
 import time
 from urllib.error import HTTPError, URLError
 import urllib.parse
@@ -13,6 +13,8 @@ import urllib.request
 import aiohttp
 import voluptuous as vol
 import logging
+import time
+from bs4 import BeautifulSoup
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,7 +51,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
 
 # VERSION
-VERSION = '0.7'
+VERSION = '0.8'
 
 # Dependencies
 from .airmusicapi import airmusic
@@ -134,7 +136,6 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     # Load favorite radio stations
     async def load_sources(self):
         """Initialize the Airmusic device loading the sources."""
-        from bs4 import BeautifulSoup
         if self._source:
             # Load user set channels.
             _LOGGER.debug("Airmusic: [load_source] - Request user sources %s ",
@@ -227,25 +228,35 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             playinfo_xml = await self.request_call('/playinfo')
             soup = BeautifulSoup(playinfo_xml, features = "xml")
             reference = soup.sid.renderContents().decode('UTF8')
-            station_info_content = soup.result.renderContents().decode('UTF8')
-            station_info = soup.station_info.renderContents().decode('UTF8') if soup.station_info else None
-            servicename = '' 
-            if station_info_content.find('<station_info>') >= 0:
-                servicename = station_info
-            else:
-                servicename = self._source_name
+            imagelogo = soup.result.renderContents().decode('UTF8')
+            current_time = int(time.time())
+            servicename = soup.station_info.renderContents().decode('UTF8') if soup.station_info else str(current_time)
             eventtitle = soup.song.renderContents().decode('UTF8') if soup.song else None
             eventid = soup.artist.renderContents().decode('UTF8') if soup.artist else None
 
             _LOGGER.debug("Airmusic: [update] - Eventtitle for host %s = %s",
                           self._host, eventtitle)
+        
+            # Check if the station has changed
+            if self._selected_source != servicename:
+                _LOGGER.debug("Airmusic: [update] - Station changed, updating image URL")
+                await self.async_update_media_image_url()
+
             # Info of selected source and title
             self._selected_source = servicename 
             self._selected_media_content_id = eventid
-            self._selected_media_title = ' - '.join(filter(None, [servicename, eventid, eventtitle])) or None
 
-            self._image_url = f'http://{self._host}:{self._port}/playlogo.jpg'
+            if servicename == str(current_time):
+                self._selected_media_title = ' - '.join(filter(None, [eventid, eventtitle])) or None
+            else:
+                self._selected_media_title = ' - '.join(filter(None, [servicename, eventid, eventtitle])) or None
 
+            if imagelogo.find('<album_img>') >= 0:
+                self._image_url = f'http://{self._host}:{self._port}/album.jpg'
+            elif imagelogo.find('<logo_img>') >= 0:
+                self._image_url = f'http://{self._host}:{self._port}/playlogo.jpg'
+            else:
+                self._image_url = None
         else:
             self._image_url = None
 
@@ -331,29 +342,59 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     def media_image_url(self):
         """Image of current playing media."""
         if self._image_url:
-            _LOGGER.debug("Airmusic: [media_image_url] - Using proxy for image URL: %s", self._image_url)
-            if self._selected_source:
-                return self.get_browse_image_url('music', self._selected_source)
-            else:
-                return self.get_browse_image_url('music', 'default_id')
+            current_time = int(time.time())
+            return f"{self._image_url}&t={current_time}"
         return None
         
     @Throttle(MIN_TIME_BETWEEN_SCANS)    
-    async def async_get_browse_image(self, media_content_type, selected_source, media_image_id=None):
-        """Serve album art. Returns (content, content_type)."""
-        image_url = f'http://{self._host}:{self._port}/playlogo.jpg'
+    async def async_update_media_image_url(self):
+        """Update the media image URL."""
+        if self._pwstate == 'playing':
+            playinfo_xml = await self.request_call('/playinfo')
+            soup = BeautifulSoup(playinfo_xml, features="xml")
+            imagelogo = soup.result.renderContents().decode('UTF8')
+            current_time = int(time.time())
+
+            if imagelogo.find('<album_img>') >= 0:
+                self._image_url = f'http://{self._host}:{self._port}/album.jpg?t={current_time}'
+            elif imagelogo.find('<logo_img>') >= 0:
+                self._image_url = f'http://{self._host}:{self._port}/playlogo.jpg?t={current_time}'
+            else:
+                self._image_url = None
+
+            _LOGGER.debug("Airmusic: [update_media_image_url] - Image URL updated: %s", self._image_url)
+        else:
+            self._image_url = None
+
+    async def async_get_media_image(self):
+        """Fetch the media image of the current playing media."""
+        _LOGGER.debug("Airmusic: [async_get_media_image] - Called with image URL: %s", self._image_url)
+
+        if self._image_url is None:
+            _LOGGER.debug("Airmusic: [async_get_media_image] - No image URL set")
+            return None, None
+
+        url = self._image_url if isinstance(self._image_url, str) else self._image_url.get('url')
+        if not url:
+            _LOGGER.debug("Airmusic: [async_get_media_image] - No valid URL found")
+            return None, None
 
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(image_url, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^')) as response:
+                _LOGGER.debug("Airmusic: [async_get_media_image] - Attempting to fetch image from: %s", url)
+                async with session.get(url, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^')) as response:
                     if response.status == 200:
                         content = await response.read()
+                        _LOGGER.debug("Airmusic: [async_get_media_image] - Successfully fetched image")
                         return content, response.content_type
                     else:
-                        _LOGGER.error("Failed to fetch image: %s", response.status)
+                        _LOGGER.debug("Airmusic: [async_get_media_image] - Failed to fetch image: %s", response.status)
                         return None, None
         except aiohttp.ClientError as e:
-            _LOGGER.error("ClientError while fetching image: %s", str(e))
+            _LOGGER.debug("Airmusic: [async_get_media_image] - Unable to fetch image: %s", str(e))
+            return None, None
+        except asyncio.TimeoutError:
+            _LOGGER.debug("Airmusic: [async_get_media_image] - Timeout while fetching image")
             return None, None
 
 # GET - Current source
@@ -468,6 +509,8 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 #            else:
 #                channel_digit = int(digit)+1
         await self.request_call('/play_stn?id=' + self._sources[source])
+
+
 
 
 
