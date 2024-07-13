@@ -196,8 +196,6 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             self._pwstate = 'true'
         elif pwstate.find('INVALID_CMD') >= 0:
             self._pwstate = 'idle'
-            await asyncio.sleep(10)
-            init_xml = await self.request_call('/Sendkey?key=7')
         elif pwstate.find('sid>1') >= 0:
             self._pwstate = 'idle'
         elif pwstate.find('sid>6') >= 0:
