@@ -51,7 +51,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
 
 # VERSION
-VERSION = '0.8'
+VERSION = '0.9'
 
 # Dependencies
 from .airmusicapi import airmusic
@@ -126,6 +126,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._source_names = {}
         self._sources = {}
         self._unique_id = f"{self._host}-{self._name}"
+        self._request_semaphore = asyncio.Semaphore(1)
 
     # Run when added to HASS TO LOAD CHANNELS
     async def async_added_to_hass(self):
@@ -136,43 +137,17 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     # Load favorite radio stations
     async def load_sources(self):
         """Initialize the Airmusic device loading the sources."""
-        if self._source:
-            # Load user set channels.
-            _LOGGER.debug("Airmusic: [load_source] - Request user sources %s ",
-                          self._source)
-            list_xml = await self.request_call('/list?id=75&start=1&count=20')
-
-            # Channel name
-            soup = BeautifulSoup(list_xml, features = "xml")
-            src_names = soup.find_all('name')
-            self._source_names = [src_name.string for src_name in src_names]
-            # Channel reference
-            src_references = soup.find_all('id')
-            sources = [src_reference.string for src_reference in
-                       src_references]
-            self._sources = dict(zip(self._source_names, sources))
-
-        else:
-            # Load channels from first bouquet.
-            reference = urllib.parse.quote_plus(await self.get_sources_reference())
-            _LOGGER.debug("Airmusic: [load_sources] - Request reference %s ",
-                          reference)
-            list_xml = await self.request_call('/list?id=75&start=1&count=20')
-
-            # Channel name
-            soup = BeautifulSoup(list_xml, features = "xml")
-            src_names = soup.find_all('name')
-            self._source_names = [src_name.string for src_name in src_names]
-
-            # Channel reference
-            src_references = soup.find_all('id')
-            sources = [src_reference.string for src_reference in
-                       src_references]
-            self._sources = dict(zip(self._source_names, sources))
+        list_xml = await self.request_call('/list?id=75&start=1&count=20')
+        soup = BeautifulSoup(list_xml, features="xml")
+    
+        src_names = [src_name.string for src_name in soup.find_all('name')]
+        sources = [src_reference.string for src_reference in soup.find_all('id')]
+    
+        self._source_names = src_names
+        self._sources = dict(zip(src_names, sources))
 
     async def get_sources_reference(self):
         """Import BeautifulSoup."""
-        from bs4 import BeautifulSoup
         # Get first bouquet reference
         list_xml = await self.request_call('/list?id=75&start=1&count=20')
         soup = BeautifulSoup(list_xml, features = "xml")
@@ -180,101 +155,82 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 
     # Asnc API requests
     async def request_call(self, url):
-        """Call web API request."""
+        """Call web API request with rate limiting."""
         uri = 'http://' + self._host + url
         _LOGGER.debug("Airmusic: [request_call] - Call request %s ", uri)
-        async with self._opener.get(uri, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^', encoding='utf-8')) as resp:
-            text = await resp.read()
+        async with self._request_semaphore:
+            async with self._opener.get(uri, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^', encoding='utf-8')) as resp:
+                text = await resp.read()
+            await asyncio.sleep(1)  # 1 second delay between requests
             return text
 
     # Component Update
     @Throttle(MIN_TIME_BETWEEN_SCANS)
     async def async_update(self):
-        """Import BeautifulSoup."""
-        from bs4 import BeautifulSoup
-        # Get the latest details from the device.
-        _LOGGER.debug("Airmusic: [update] - request for host %s (%s)", self._host,
-                     self._name)
+        """Update device status."""
         playinfo_xml = await self.request_call('/playinfo')
-        soup = BeautifulSoup(playinfo_xml, features = "xml")
+        soup = BeautifulSoup(playinfo_xml, features="xml")
+    
+        # Update power state
         pwstate = soup.result.renderContents().decode('UTF8')
-        self._pwstate = ''
+        self._update_power_state(pwstate)
+    
+        # If powered on, update other information
+        if self._pwstate in ['playing', 'idle', 'buffering', 'paused']:
+            self._update_media_info(soup)
+            await self._update_volume_info()
 
-        _LOGGER.debug("Airmusic: [update] - Powerstate for host %s = %s",
-                      self._host, pwstate)
+    async def _update_volume_info(self):
+        """Update volume and mute status."""
+        volume_xml = await self.request_call('/background_play_status')
+        soup = BeautifulSoup(volume_xml, features="xml")
+        vol = soup.vol.renderContents().decode('UTF8')
+        mute = soup.mute.renderContents().decode('UTF8')
+
+        self._volume = int(vol) / MAX_VOLUME if vol else None
+        self._muted = (mute == '1') if mute else None
+
+    def _update_power_state(self, pwstate):
+        """Update power state based on playinfo response."""
         if pwstate.find('FAIL') >= 0:
             self._pwstate = 'true'
-
-        if pwstate.find('INVALID_CMD') >= 0:
-            init_xml = await self.request_call('/init')
+        elif pwstate.find('INVALID_CMD') >= 0:
             self._pwstate = 'idle'
             await asyncio.sleep(10)
             init_xml = await self.request_call('/Sendkey?key=7')
-
-        if pwstate.find('sid>1') >= 0:
+        elif pwstate.find('sid>1') >= 0:
             self._pwstate = 'idle'
-
-        if pwstate.find('sid>6') >= 0:
+        elif pwstate.find('sid>6') >= 0:
             self._pwstate = 'playing'
-
-        if pwstate.find('sid>2') >= 0:
+        elif pwstate.find('sid>2') >= 0:
             self._pwstate = 'buffering'
-
-        if pwstate.find('sid>9') >= 0:
+        elif pwstate.find('sid>9') >= 0:
             self._pwstate = 'paused'
+        else:
+            self._pwstate = 'unknown'
 
-        # If powered on
-        if self._pwstate == 'playing':
-            playinfo_xml = await self.request_call('/playinfo')
-            soup = BeautifulSoup(playinfo_xml, features = "xml")
-            reference = soup.sid.renderContents().decode('UTF8')
-            imagelogo = soup.result.renderContents().decode('UTF8')
-            current_time = int(time.time())
-            servicename = soup.station_info.renderContents().decode('UTF8') if soup.station_info else str(current_time)
-            eventtitle = soup.song.renderContents().decode('UTF8') if soup.song else None
-            eventid = soup.artist.renderContents().decode('UTF8') if soup.artist else None
+    def _update_media_info(self, soup):
+        """Update media information from playinfo response."""
+        current_time = int(time.time())
+        self._selected_source = soup.station_info.renderContents().decode('UTF8') if soup.station_info else str(current_time)
+        eventid = soup.artist.renderContents().decode('UTF8') if soup.artist else None
+        eventtitle = soup.song.renderContents().decode('UTF8') if soup.song else None
 
-            _LOGGER.debug("Airmusic: [update] - Eventtitle for host %s = %s",
-                          self._host, eventtitle)
-        
-            # Check if the station has changed
-            if self._selected_source != servicename:
-                _LOGGER.debug("Airmusic: [update] - Station changed, updating image URL")
-                await self.async_update_media_image_url()
+        if self._selected_source != str(current_time):
+            self._selected_media_title = ' - '.join(filter(None, [self._selected_source, eventid, eventtitle])) or None
+        else:
+            self._selected_media_title = ' - '.join(filter(None, [eventid, eventtitle])) or None
 
-            # Info of selected source and title
-            self._selected_source = servicename 
-            self._selected_media_content_id = eventid
-
-            if servicename == str(current_time):
-                self._selected_media_title = ' - '.join(filter(None, [eventid, eventtitle])) or None
-            else:
-                self._selected_media_title = ' - '.join(filter(None, [servicename, eventid, eventtitle])) or None
-
-            if imagelogo.find('<album_img>') >= 0:
-                self._image_url = f'http://{self._host}:{self._port}/album.jpg'
-            elif imagelogo.find('<logo_img>') >= 0:
-                self._image_url = f'http://{self._host}:{self._port}/playlogo.jpg'
-            else:
-                self._image_url = None
+        self._selected_media_content_id = eventid
+    
+        # Update image URL
+        imagelogo = soup.result.renderContents().decode('UTF8')
+        if imagelogo.find('<album_img>') >= 0:
+            self._image_url = f'http://{self._host}:{self._port}/album.jpg'
+        elif imagelogo.find('<logo_img>') >= 0:
+            self._image_url = f'http://{self._host}:{self._port}/playlogo.jpg'
         else:
             self._image_url = None
-
-        # Check volume and if is muted and update self variables
-        if self._pwstate in ['playing','idle','buffering','paused']:
-            volume_xml = await self.request_call('/background_play_status')
-            soup = BeautifulSoup(volume_xml, features = "xml")
-            vol = soup.vol.renderContents().decode('UTF8')
-            mute = soup.mute.renderContents().decode('UTF8')
-
-            self._volume = int(vol) / MAX_VOLUME if vol else None
-            self._muted = (mute == '1') if mute else None
-            _LOGGER.debug("Airmusic: [update] - Volume for host %s = %s",
-                          self._host, vol)
-            _LOGGER.debug("Airmusic: [update] - Is host %s muted = %s",
-                          self._host, mute)
-
-        return True
 
 # GET - Name
     @property
@@ -296,8 +252,6 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             return STATE_PAUSED
         if self._pwstate == 'playing':
             return STATE_PLAYING
-        if self._pwstate == "init":
-            return self._init
 
         return STATE_UNKNOWN
 
@@ -497,31 +451,4 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         except vol.Invalid:
             _LOGGER.error('Media ID must be positive integer')
             return
-        # Hack to map remote key press
-        # 2   Key "0"
-        # 3   Key "1"
-        # 4   Key "2"
-        # 5   Key "3"
-        # 6   Key "4"
-#        for digit in media_id:
-#            if digit == '0':
-#                channel_digit = '11'
-#            else:
-#                channel_digit = int(digit)+1
         await self.request_call('/play_stn?id=' + self._sources[source])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
