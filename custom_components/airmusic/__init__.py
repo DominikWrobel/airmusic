@@ -13,10 +13,15 @@ from homeassistant.const import (
     CONF_DEVICES, CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_PORT, CONF_TIMEOUT,
     CONF_USERNAME)
 from homeassistant.helpers import config_validation as cv, discovery
+from homeassistant.helpers import discovery
 from homeassistant.helpers.entity import Entity
+from homeassistant.core import HomeAssistant
+from .const import DOMAIN, CONF_HOST, CONF_NAME
+
+_LOGGER = logging.getLogger(__name__)
 
 # VERSION
-VERSION = '0.9'
+VERSION = '1.0'
 
 # REQUIREMENTS
 REQUIREMENTS = ['beautifulsoup4==4.6.3']
@@ -25,7 +30,7 @@ REQUIREMENTS = ['beautifulsoup4==4.6.3']
 _LOGGER = logging.getLogger(__name__)
 
 # DOMAIN
-DOMAIN = 'airmusic'
+# DOMAIN = 'airmusic'
 
 # Supported domains
 SUPPORTED_DOMAINS = ['media_player']
@@ -79,26 +84,29 @@ CONFIG_SCHEMA = vol.Schema({
         })
 }, extra=vol.ALLOW_EXTRA)
 
+async def async_setup(hass: HomeAssistant, config: dict):
+    """Set up the Airmusic component."""
+    hass.data[DOMAIN] = {}
 
-async def async_setup(hass, config):
-    """Initialize the Airmusic device."""
-    if DOMAIN not in hass.data:
-        hass.data[DOMAIN] = []
+    if DOMAIN not in config:
+        return True
 
-    _LOGGER.info("Initializing Airmusic devices")
+    _LOGGER.info("Initializing Airmusic devices from YAML configuration")
 
     airmusic_list = []
 
-    configured_devices = config[DOMAIN].get(CONF_DEVICES)
+    configured_devices = config[DOMAIN].get(CONF_DEVICES, [])
     for device in configured_devices:
-        airmusic = AirmusicDevice(device.get(CONF_HOST),
-                                device.get(CONF_PORT),
-                                device.get(CONF_NAME),
-                                device.get(CONF_USERNAME),
-                                device.get(CONF_PASSWORD),
-                                device.get(CONF_TIMEOUT),
-                                device.get(CONF_SOURCE),
-                                device.get(CONF_IMAGE))
+        airmusic = AirmusicDevice(
+            device.get(CONF_HOST),
+            device.get(CONF_PORT),
+            device.get(CONF_NAME),
+            device.get(CONF_USERNAME),
+            device.get(CONF_PASSWORD),
+            device.get(CONF_TIMEOUT),
+            device.get(CONF_SOURCE),
+            device.get(CONF_IMAGE)
+        )
 
         _LOGGER.debug("Airmusic device %s configured", device.get(CONF_HOST))
         airmusic_list.append(airmusic)
@@ -106,16 +114,48 @@ async def async_setup(hass, config):
     hass.data[DOMAIN] = airmusic_list
 
     if not airmusic_list:
-        _LOGGER.info("No airmusic devices configured")
+        _LOGGER.info("No Airmusic devices configured")
         return False
 
-    _LOGGER.debug("Configured %s airmusic", len(airmusic_list))
+    _LOGGER.debug("Configured %s Airmusic devices", len(airmusic_list))
 
     for domain in SUPPORTED_DOMAINS:
         hass.async_create_task(
-            discovery.async_load_platform(hass, domain, DOMAIN, {}, config))
+            discovery.async_load_platform(hass, domain, DOMAIN, {}, config)
+        )
+    
     return True
 
+async def async_setup_entry(hass: HomeAssistant, entry):
+    """Set up Airmusic from a config entry."""
+    _LOGGER.info("Setting up Airmusic from config entry")
+
+    host = entry.data[CONF_HOST]
+    name = entry.data[CONF_NAME]
+
+    airmusic = AirmusicDevice(host, None, name, None, None, None, None, None)
+
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = airmusic
+
+    _LOGGER.debug("Airmusic device %s set up from config entry", host)
+
+    for domain in SUPPORTED_DOMAINS:
+        hass.async_create_task(
+            hass.config_entries.async_forward_entry_setup(entry, domain)
+        )
+
+    return True
+
+async def async_unload_entry(hass: HomeAssistant, entry):
+    """Unload a config entry."""
+    _LOGGER.info("Unloading Airmusic config entry")
+
+    hass.data[DOMAIN].pop(entry.entry_id)
+
+    for domain in SUPPORTED_DOMAINS:
+        await hass.config_entries.async_forward_entry_unload(entry, domain)
+
+    return True
 
 class AirmusicDevice(Entity):
     """Representation of a Airmusic device."""
@@ -185,4 +225,5 @@ class AirmusicDevice(Entity):
     def get_opener(self):
         """Return the socket of the device."""
         return self._opener
+
 
