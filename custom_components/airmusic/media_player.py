@@ -15,10 +15,15 @@ import voluptuous as vol
 import logging
 import time
 from bs4 import BeautifulSoup
+import xml.etree.ElementTree as ET
 
 _LOGGER = logging.getLogger(__name__)
 
 # From homeassitant
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.typing import ConfigType
 
 from custom_components.airmusic import _LOGGER, DOMAIN as AIRMUSIC_DOMAIN
 from homeassistant.components.media_player.const import (
@@ -49,12 +54,13 @@ from homeassistant.const import (
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
+from .const import DOMAIN, CONF_HOST, CONF_NAME
 
 # VERSION
-VERSION = '0.9'
+VERSION = '1.0'
 
 # Dependencies
-from .airmusicapi import airmusic
+# from .airmusicapi import airmusic
 
 # DEFAULTS
 DEFAULT_PORT = 8080
@@ -100,22 +106,46 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     async_add_entities(devices, update_before_add=True)
 
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
+    """Set up Airmusic media player from a config entry."""
+    hass.data.setdefault(DOMAIN, {})
+    _LOGGER.info("Setting up Airmusic media player from config entry")
+
+    host = entry.data[CONF_HOST]
+    name = entry.data[CONF_NAME]
+
+    airmusic = AirmusicMediaPlayer(hass, host, name)
+
+    async_add_entities([airmusic], update_before_add=True)
+#    await hass.config_entries.async_forward_entry_setup(entry, "media_player")
+
+    return True
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    # This should also be awaited
+#    await hass.config_entries.async_forward_entry_unload(entry, "media_player")
+    return True
+
 # Airmusic Media Player Device
 class AirmusicMediaPlayer(MediaPlayerEntity):
     """Representation of a Airmusic Media Player device."""
 
-    def __init__(self, AirmusicMediaPlayerEntity):
+    def __init__(self, hass, host, name):
         """Initialize the Airmusic device."""
-        self._host = AirmusicMediaPlayerEntity.get_host
-        self._port = AirmusicMediaPlayerEntity.get_port
-        self._name = AirmusicMediaPlayerEntity.get_name
-        self._username = AirmusicMediaPlayerEntity.get_username
-        self._password = AirmusicMediaPlayerEntity.get_password
-        self._timeout = AirmusicMediaPlayerEntity.get_timeout
-        self._source = AirmusicMediaPlayerEntity.get_source
-        self._image = AirmusicMediaPlayerEntity.get_image
-        self._opener = AirmusicMediaPlayerEntity.get_opener
-        self._pwstate = False
+        super().__init__()
+        self.hass = hass
+        self._host = host
+        self._name = name
+        self._port = 8080
+        self._username = None
+        self._password = None
+        self._timeout = None
+        self._source = None
+        self._image = None
+        self._opener = aiohttp.ClientSession()  # Initialize _opener
+        self._state = None
+        self._pwstate = None
         self._volume = 0
         self._muted = False
         self._selected_source = ''
@@ -179,6 +209,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         if self._pwstate in ['playing', 'idle', 'buffering', 'paused']:
             self._update_media_info(soup)
             await self._update_volume_info()
+#            await self.async_update_media_image_url()
 
     async def _update_volume_info(self):
         """Update volume and mute status."""
@@ -224,11 +255,15 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         # Update image URL
         imagelogo = soup.result.renderContents().decode('UTF8')
         if imagelogo.find('<album_img>') >= 0:
-            self._image_url = f'http://{self._host}:{self._port}/album.jpg'
+            self._image_url = f'http://{self._host}:8080/album.jpg'
         elif imagelogo.find('<logo_img>') >= 0:
-            self._image_url = f'http://{self._host}:{self._port}/playlogo.jpg'
+            self._image_url = f'http://{self._host}:8080/playlogo.jpg'
         else:
             self._image_url = None
+
+    async def async_will_remove_from_hass(self):
+        """Cleanup when entity is removed from Home Assistant."""
+        await self._opener.close()
 
 # GET - Name
     @property
@@ -399,7 +434,6 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def async_mute_volume(self, mute):
         """Mute or unmute media player."""
         await self.request_call('/Sendkey?key=8')
-#        self.async_update()
 
 # SET - Media Play/pause
     async def async_media_play_pause(self):
@@ -420,13 +454,11 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def async_turn_on(self):
         """Turn the media player on."""
         await self.request_call('/Sendkey?key=7')
-#        self.async_update()
 
 # SET - Turn off
     async def async_turn_off(self):
         """Turn off media player."""
         await self.request_call('/Sendkey?key=7')
-#        self.async_update()
 
 # SET - Next station
     async def async_media_next_track(self):
