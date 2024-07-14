@@ -57,7 +57,7 @@ from homeassistant.util import Throttle
 from .const import DOMAIN, CONF_HOST, CONF_NAME
 
 # VERSION
-VERSION = '1.0'
+VERSION = '1.1'
 
 # Dependencies
 # from .airmusicapi import airmusic
