@@ -1,0 +1,14 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "data": {
+                    "host": "IP adress",
+                    "name": "Name"
+                },
+                "description": "Enter the IP address and name for your Airmusic device.",
+                "title": "Set up Airmusic Integration"
+            }
+        }
+    }
+}
