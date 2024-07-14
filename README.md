@@ -15,6 +15,7 @@ It allows you to remotely control your AirMusic compatible internet radios. Shou
   - Self INIT, after init the radio will go into standby mode
   - Station logos work from v0.4
   - Unique ID is now working
+  - Setpu via GUI
 
 # What is not working right now:
   - No source selection, only Internet Radio is available
@@ -50,14 +51,9 @@ Just click on upgrade.
 
 # Configuration Example:
 
-```yaml 
-airmusic:
-  devices:
-    - host: 192.168.0.142
-      name: Radio kuchnia
-    - host: 192.168.0.248
-      name: Radio łazienka
-```
+Type in your radio IP and name
+
+![Przechwytywanie](https://github.com/user-attachments/assets/1230d720-dd22-4cb6-b167-354f6f8eae47)
 
 The Internet radios need to have static IP set up.
 
@@ -68,6 +64,8 @@ The Internet radios need to have static IP set up.
 
 
 ![1](https://github.com/DominikWrobel/airmusic/assets/89667597/c4b380e1-ffc7-4af3-84a3-8b54ec463657)
+
+![album](https://github.com/user-attachments/assets/d7ff1719-38a8-4b89-99a9-31c1b49ac656)
 
 ![2](https://github.com/DominikWrobel/airmusic/assets/89667597/a22cdfd1-31da-4774-9fd4-916758d5e019)
 
