@@ -15,7 +15,7 @@ It allows you to remotely control your AirMusic compatible internet radios. Shou
   - Self INIT, after init the radio will go into standby mode
   - Station logos work from v0.4
   - Unique ID is now working
-  - Setpu via GUI
+  - Setup via GUI
 
 # What is not working right now:
   - No source selection, only Internet Radio is available
