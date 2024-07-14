@@ -53,7 +53,7 @@ Just click on upgrade.
 
 Type in your radio IP and name
 
-![Przechwytywanie](https://github.com/user-attachments/assets/1230d720-dd22-4cb6-b167-354f6f8eae47)
+![Przechwytywanie](https://github.com/user-attachments/assets/4e74103b-2ca9-43b6-a67a-82074f343fc8)
 
 The Internet radios need to have static IP set up.
 
