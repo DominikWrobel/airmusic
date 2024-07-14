@@ -1,7 +1,7 @@
 {
   "domain": "airmusic",
   "name": "AirMusic Integration",
-  "version": "1.0",
+  "version": "1.1",
   "documentation": "https://github.com/DominikWrobel/airmusic",
   "issue_tracker": "https://github.com/DominikWrobel/airmusic/issues",
   "dependencies": [],
