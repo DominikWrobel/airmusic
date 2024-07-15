@@ -50,6 +50,9 @@ That's it, and you will be notified by HACS on every release.
 Just click on upgrade.
 
 # Configuration Example:
+Search for Airmusic in Settings -> devices and services:
+
+![airmusicint](https://github.com/user-attachments/assets/1c270b1b-b57a-4862-8c7d-080da2c12de5)
 
 Type in your radio IP and name
 
