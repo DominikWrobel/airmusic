@@ -39,11 +39,11 @@ custom_components
 │   ├── media_player.py
 │   ├── manifest.json
 │   ├── airmusicapi.py
-|   ├── config_flow.py
-|   ├── const.py
-|   ├── strings.json
-|   ├── translations
-|   |   └── en.json
+│   ├── config_flow.py
+│   ├── const.py
+│   ├── strings.json
+│   ├── translations
+│   │   └── en.json
 ```
 # Install with HACS recomended:
 It is possible to add it as a custom repository.
