@@ -57,7 +57,7 @@ from homeassistant.util import Throttle
 from .const import DOMAIN, CONF_HOST, CONF_NAME
 
 # VERSION
-VERSION = '1.1'
+VERSION = '1.2'
 
 # Dependencies
 # from .airmusicapi import airmusic
@@ -213,7 +213,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 
     async def _update_volume_info(self):
         """Update volume and mute status."""
-        volume_xml = await self.request_call('/background_play_status')
+        volume_xml = await self.request_call('/playinfo')
         soup = BeautifulSoup(volume_xml, features="xml")
         vol = soup.vol.renderContents().decode('UTF8')
         mute = soup.mute.renderContents().decode('UTF8')
@@ -463,7 +463,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 # SET - Next station
     async def async_media_next_track(self):
         """Change to next channel."""
-        await self.request_call('/Sendkey?key=31')
+        await self.request_call('/Sendkey?key=112')
 
 # SET - Previous station
     async def async_media_previous_track(self):
@@ -482,3 +482,4 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             _LOGGER.error('Media ID must be positive integer')
             return
         await self.request_call('/play_stn?id=' + self._sources[source])
+
