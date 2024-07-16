@@ -81,6 +81,12 @@ The Internet radios need to have static IP set up.
 
 I've added a simple remote at (https://github.com/DominikWrobel/airmusic/tree/main/remote) using shell_command and button cards. Remote can be used with or without this integration.
 
+# Support
+
+If you like my work you can support me via:
+
+<figure class="wp-block-image size-large"><a href="https://www.buymeacoffee.com/dominikjwrc"><img src="https://homeassistantwithoutaplan.files.wordpress.com/2023/07/coffe-3.png?w=182" alt="" class="wp-image-64"/></a></figure>
+
 # Special thanks to:
 
 Cinzas and his Enigma2 custom_component on whitch this integration is based upon: (https://github.com/cinzas/homeassistant-enigma-player/tree/master)
