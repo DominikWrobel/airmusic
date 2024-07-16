@@ -57,7 +57,7 @@ from homeassistant.util import Throttle
 from .const import DOMAIN, CONF_HOST, CONF_NAME
 
 # VERSION
-VERSION = '1.2'
+VERSION = '1.3'
 
 # Dependencies
 # from .airmusicapi import airmusic
@@ -157,6 +157,8 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._sources = {}
         self._unique_id = f"{self._host}-{self._name}"
         self._request_semaphore = asyncio.Semaphore(1)
+        self._sleep_timer_count = 0
+        self._sleep_timer_end_time = None
 
     # Run when added to HASS TO LOAD CHANNELS
     async def async_added_to_hass(self):
@@ -200,16 +202,15 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         """Update device status."""
         playinfo_xml = await self.request_call('/playinfo')
         soup = BeautifulSoup(playinfo_xml, features="xml")
-    
+
         # Update power state
         pwstate = soup.result.renderContents().decode('UTF8')
         self._update_power_state(pwstate)
-    
+
         # If powered on, update other information
         if self._pwstate in ['playing', 'idle', 'buffering', 'paused']:
             self._update_media_info(soup)
             await self._update_volume_info()
-#            await self.async_update_media_image_url()
 
     async def _update_volume_info(self):
         """Update volume and mute status."""
@@ -245,12 +246,28 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         eventid = soup.artist.renderContents().decode('UTF8') if soup.artist else None
         eventtitle = soup.song.renderContents().decode('UTF8') if soup.song else None
 
+        # Calculate remaining sleep time
+        sleep_timer_info = ""
+        if self._sleep_timer_end_time:
+            remaining_time = max(0, int(self._sleep_timer_end_time - time.time()))
+            if remaining_time > 0:
+                minutes, seconds = divmod(remaining_time, 60)
+                sleep_timer_info = f" [Sleep: {minutes:02d}:{seconds:02d}]"
+            else:
+                self._sleep_timer_count = 0
+                self._sleep_timer_end_time = None
+
         if self._selected_source != str(current_time):
-            self._selected_media_title = ' - '.join(filter(None, [self._selected_source, eventid, eventtitle])) or None
+            self._selected_media_title = ' - '.join(filter(None, [self._selected_source, eventid, eventtitle])) + sleep_timer_info
         else:
-            self._selected_media_title = ' - '.join(filter(None, [eventid, eventtitle])) or None
+            self._selected_media_title = ' - '.join(filter(None, [eventid, eventtitle])) + sleep_timer_info
 
         self._selected_media_content_id = eventid
+
+        # Check if sleep timer has ended
+        if self._sleep_timer_end_time and time.time() >= self._sleep_timer_end_time:
+            self._sleep_timer_count = 0
+            self._sleep_timer_end_time = None
     
         # Update image URL
         imagelogo = soup.result.renderContents().decode('UTF8')
@@ -462,13 +479,23 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 
 # SET - Next station
     async def async_media_next_track(self):
-        """Change to next channel."""
+        """Change to next favourite channel."""
         await self.request_call('/Sendkey?key=112')
 
-# SET - Previous station
+# SET - Set sleep timer
     async def async_media_previous_track(self):
-        """Change to previous channel."""
-        await self.request_call('/Sendkey?key=32')
+        """Change to previous channel and manage sleep timer."""
+        await self.request_call('/Sendkey?key=12')
+        
+        self._sleep_timer_count += 1
+        if self._sleep_timer_count > 12:  # Reset after 180 minutes (12 * 15)
+            self._sleep_timer_count = 0
+            self._sleep_timer_end_time = None
+        else:
+            sleep_duration = self._sleep_timer_count * 15 * 60  # Convert to seconds
+            self._sleep_timer_end_time = time.time() + sleep_duration
+        
+        await self.async_update()
 
 # SET - Change to source
     async def async_play_media(self, media_type, media_id, **kwargs):
