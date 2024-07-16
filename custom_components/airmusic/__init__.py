@@ -21,7 +21,7 @@ from .const import DOMAIN, CONF_HOST, CONF_NAME
 _LOGGER = logging.getLogger(__name__)
 
 # VERSION
-VERSION = '1.2'
+VERSION = '1.3'
 
 # REQUIREMENTS
 REQUIREMENTS = ['beautifulsoup4==4.6.3']
@@ -180,6 +180,8 @@ class AirmusicDevice(Entity):
         self._sources = {}
         # Opener for http connection
         self._opener = aiohttp.ClientSession()
+        self._sleep_timer_count = 0
+        self._sleep_timer_end_time = None
 
     @property
     def get_host(self):
@@ -225,5 +227,6 @@ class AirmusicDevice(Entity):
     def get_opener(self):
         """Return the socket of the device."""
         return self._opener
+
 
 
