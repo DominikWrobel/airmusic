@@ -16,6 +16,7 @@ import logging
 import time
 from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
+import os
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,13 +25,21 @@ _LOGGER = logging.getLogger(__name__)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.components import media_source
 
 from custom_components.airmusic import _LOGGER, DOMAIN as AIRMUSIC_DOMAIN
 from homeassistant.components.media_player.const import (
     MEDIA_TYPE_ALBUM, 
     MEDIA_TYPE_ARTIST,
     MEDIA_TYPE_PLAYLIST,
-    MEDIA_TYPE_CHANNEL
+    MEDIA_TYPE_CHANNEL,
+    MEDIA_CLASS_DIRECTORY,
+    MEDIA_CLASS_MUSIC
+)
+
+from homeassistant.components.media_player.browse_media import (
+    BrowseMedia,
+    async_process_play_media_url,
 )
 
 from homeassistant.components.media_player import (
@@ -57,7 +66,7 @@ from homeassistant.util import Throttle
 from .const import DOMAIN, CONF_HOST, CONF_NAME
 
 # VERSION
-VERSION = '1.3'
+VERSION = '1.4'
 
 # Dependencies
 # from .airmusicapi import airmusic
@@ -88,6 +97,8 @@ SUPPORT_AIRMUSIC = (
     | MediaPlayerEntityFeature.PLAY_MEDIA
     | MediaPlayerEntityFeature.PAUSE
     | MediaPlayerEntityFeature.STOP
+    | MediaPlayerEntityFeature.BROWSE_MEDIA
+    | MediaPlayerEntityFeature.MEDIA_ENQUEUE
 )
 
 MAX_VOLUME = 30
@@ -186,15 +197,29 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         return soup.find('status').renderContents().decode('UTF8')
 
     # Asnc API requests
+#    async def request_call(self, url):
+#        """Call web API request with rate limiting."""
+#        uri = 'http://' + self._host + url
+#        _LOGGER.debug("Airmusic: [request_call] - Call request %s ", uri)
+#        async with self._request_semaphore:
+#            async with self._opener.get(uri, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^', encoding='utf-8')) as resp:
+#                text = await resp.read()
+#            await asyncio.sleep(1)  # 1 second delay between requests
+#            return text
+
     async def request_call(self, url):
         """Call web API request with rate limiting."""
-        uri = 'http://' + self._host + url
+        uri = f'http://{self._host}{url}'
         _LOGGER.debug("Airmusic: [request_call] - Call request %s ", uri)
         async with self._request_semaphore:
-            async with self._opener.get(uri, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^', encoding='utf-8')) as resp:
-                text = await resp.read()
-            await asyncio.sleep(1)  # 1 second delay between requests
-            return text
+            try:
+                async with self._opener.get(uri, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^', encoding='utf-8')) as resp:
+                    text = await resp.text()
+                await asyncio.sleep(1)  # 1 second delay between requests
+                return text
+            except aiohttp.ClientConnectorError as e:
+                _LOGGER.error("Connection error: %s", str(e))
+                return None
 
     # Component Update
     @Throttle(MIN_TIME_BETWEEN_SCANS)
@@ -254,8 +279,10 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
                 minutes, seconds = divmod(remaining_time, 60)
                 sleep_timer_info = f" [Sleep: {minutes:02d}:{seconds:02d}]"
             else:
-                self._sleep_timer_count = 0
-                self._sleep_timer_end_time = None
+                self._reset_sleep_timer()
+                asyncio.create_task(self.async_turn_off())
+#                self._sleep_timer_count = 0
+#                self._sleep_timer_end_time = None
 
         if self._selected_source != str(current_time):
             self._selected_media_title = ' - '.join(filter(None, [self._selected_source, eventid, eventtitle])) + sleep_timer_info
@@ -281,6 +308,53 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def async_will_remove_from_hass(self):
         """Cleanup when entity is removed from Home Assistant."""
         await self._opener.close()
+
+# Browse media
+    async def async_browse_media(
+        self, media_content_type: str | None = None, media_content_id: str | None = None
+    ) -> BrowseMedia:
+        """Implement the websocket media browsing helper."""
+        return await media_source.async_browse_media(
+            self.hass,
+            media_content_id,
+            content_filter=lambda item: item.media_content_type.startswith("audio/"),
+        )
+
+# Play media
+    async def async_play_media(
+        self,
+        media_type: str,
+        media_id: str,
+        enqueue: MediaPlayerEntity | None = None,
+        **kwargs: any
+    ) -> None:
+        """Play a piece of media."""
+        if media_source.is_media_source_id(media_id):
+            play_item = await media_source.async_resolve_media(self.hass, media_id, self.entity_id)
+            media_id = play_item.url
+            media_type = MediaType.MUSIC
+
+        # Process the media URL
+        processed_media_id = async_process_play_media_url(self.hass, media_id)
+
+        if media_type == MediaType.MUSIC:
+            # URL encode the processed_media_id
+            encoded_url = urllib.parse.quote(processed_media_id, safe='')
+            # Construct the local play URL
+            local_play_url = f"/LocalPlay?url={encoded_url}"
+            
+            # Send the request to play the local file
+            await self.request_call(local_play_url)
+        elif media_type == MediaType.CHANNEL:
+            # Existing logic for playing radio stations
+            try:
+                cv.positive_int(processed_media_id)
+            except vol.Invalid:
+                _LOGGER.error('Media ID must be positive integer')
+                return
+            await self.request_call('/play_stn?id=' + self._sources[processed_media_id])
+        else:
+            _LOGGER.error("Unsupported media type")
 
 # GET - Name
     @property
@@ -476,6 +550,14 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def async_turn_off(self):
         """Turn off media player."""
         await self.request_call('/Sendkey?key=7')
+        self._reset_sleep_timer()
+
+# SET - Reset sleep timer
+    def _reset_sleep_timer(self):
+        """Reset the sleep timer."""
+        self._sleep_timer_count = 0
+        self._sleep_timer_end_time = None
+        _LOGGER.debug("Sleep timer reset")
 
 # SET - Next station
     async def async_media_next_track(self):
@@ -484,29 +566,14 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 
 # SET - Set sleep timer
     async def async_media_previous_track(self):
-        """Change to previous channel and manage sleep timer."""
+        """Manage sleep timer."""
         await self.request_call('/Sendkey?key=12')
         
         self._sleep_timer_count += 1
         if self._sleep_timer_count > 12:  # Reset after 180 minutes (12 * 15)
-            self._sleep_timer_count = 0
-            self._sleep_timer_end_time = None
+            self._reset_sleep_timer()
         else:
             sleep_duration = self._sleep_timer_count * 15 * 60  # Convert to seconds
             self._sleep_timer_end_time = time.time() + sleep_duration
         
         await self.async_update()
-
-# SET - Change to source
-    async def async_play_media(self, media_type, media_id, **kwargs):
-        """Support changing a source."""
-        if media_type != MEDIA_TYPE_CHANNEL:
-            _LOGGER.error('Unsupported media type')
-            return
-        try:
-            cv.positive_int(media_id)
-        except vol.Invalid:
-            _LOGGER.error('Media ID must be positive integer')
-            return
-        await self.request_call('/play_stn?id=' + self._sources[source])
-
