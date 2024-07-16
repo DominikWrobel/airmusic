@@ -21,7 +21,7 @@ from .const import DOMAIN, CONF_HOST, CONF_NAME
 _LOGGER = logging.getLogger(__name__)
 
 # VERSION
-VERSION = '1.3'
+VERSION = '1.4'
 
 # REQUIREMENTS
 REQUIREMENTS = ['beautifulsoup4==4.6.3']
