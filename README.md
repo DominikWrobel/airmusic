@@ -18,7 +18,7 @@ It allows you to remotely control your AirMusic compatible internet radios. Shou
   - Setup via GUI
   - Next track button mapped to next favourite station
   - Previous track button mapped to sleep timer, one press sets sleep time to 15 min, another one adds 15 min up until 180 min then it resets
-  - Timer implemented for speet time, works only when setup from the integration
+  - Timer implemented for sleet time, works only when setup from this integration
   - EXPERIMENTAL media browser was implemented, I had no luck with local media or tts, but some radio stations work with radio browser
 
 # What is not working right now:
