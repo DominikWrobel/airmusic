@@ -66,7 +66,7 @@ from homeassistant.util import Throttle
 from .const import DOMAIN, CONF_HOST, CONF_NAME
 
 # VERSION
-VERSION = '1.4'
+VERSION = '1.5'
 
 # Dependencies
 # from .airmusicapi import airmusic
@@ -128,14 +128,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     airmusic = AirmusicMediaPlayer(hass, host, name)
 
     async_add_entities([airmusic], update_before_add=True)
-#    await hass.config_entries.async_forward_entry_setup(entry, "media_player")
 
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     # This should also be awaited
-#    await hass.config_entries.async_forward_entry_unload(entry, "media_player")
     return True
 
 # Airmusic Media Player Device
@@ -170,6 +168,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._request_semaphore = asyncio.Semaphore(1)
         self._sleep_timer_count = 0
         self._sleep_timer_end_time = None
+        self._is_local_playback = False
 
     # Run when added to HASS TO LOAD CHANNELS
     async def async_added_to_hass(self):
@@ -188,6 +187,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     
         self._source_names = src_names
         self._sources = dict(zip(src_names, sources))
+        self._is_local_playback = False
 
     async def get_sources_reference(self):
         """Import BeautifulSoup."""
@@ -195,17 +195,6 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         list_xml = await self.request_call('/list?id=75&start=1&count=20')
         soup = BeautifulSoup(list_xml, features = "xml")
         return soup.find('status').renderContents().decode('UTF8')
-
-    # Asnc API requests
-#    async def request_call(self, url):
-#        """Call web API request with rate limiting."""
-#        uri = 'http://' + self._host + url
-#        _LOGGER.debug("Airmusic: [request_call] - Call request %s ", uri)
-#        async with self._request_semaphore:
-#            async with self._opener.get(uri, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^', encoding='utf-8')) as resp:
-#                text = await resp.read()
-#            await asyncio.sleep(1)  # 1 second delay between requests
-#            return text
 
     async def request_call(self, url):
         """Call web API request with rate limiting."""
@@ -261,6 +250,12 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             self._pwstate = 'buffering'
         elif pwstate.find('sid>9') >= 0:
             self._pwstate = 'paused'
+        elif pwstate.find('sid>7') >= 0:
+            self._pwstate = 'idle'
+        elif pwstate.find('sid>12') >= 0:
+            self._pwstate = 'idle'
+        elif pwstate.find('sid>14') >= 0:
+            self._pwstate = 'idle'
         else:
             self._pwstate = 'unknown'
 
@@ -281,8 +276,6 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             else:
                 self._reset_sleep_timer()
                 asyncio.create_task(self.async_turn_off())
-#                self._sleep_timer_count = 0
-#                self._sleep_timer_end_time = None
 
         if self._selected_source != str(current_time):
             self._selected_media_title = ' - '.join(filter(None, [self._selected_source, eventid, eventtitle])) + sleep_timer_info
@@ -345,6 +338,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             
             # Send the request to play the local file
             await self.request_call(local_play_url)
+            self._is_local_playback = True  # Set to local playback mode
         elif media_type == MediaType.CHANNEL:
             # Existing logic for playing radio stations
             try:
@@ -353,6 +347,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
                 _LOGGER.error('Media ID must be positive integer')
                 return
             await self.request_call('/play_stn?id=' + self._sources[processed_media_id])
+            self._is_local_playback = False  # Set to internet radio mode
         else:
             _LOGGER.error("Unsupported media type")
 
@@ -504,6 +499,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         _LOGGER.debug("Airmusic: [async_select_source] - Change radio source")
         await self.request_call('/play_stn?id=' + self._sources[source])
         self._source_name = source
+        self._is_local_playback = False 
 
 # SET - Volume up
     async def async_volume_up(self):
@@ -559,21 +555,28 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._sleep_timer_end_time = None
         _LOGGER.debug("Sleep timer reset")
 
-# SET - Next station
+# SET - Next station or next track
     async def async_media_next_track(self):
-        """Change to next favourite channel."""
-        await self.request_call('/Sendkey?key=112')
-
-# SET - Set sleep timer
-    async def async_media_previous_track(self):
-        """Manage sleep timer."""
-        await self.request_call('/Sendkey?key=12')
-        
-        self._sleep_timer_count += 1
-        if self._sleep_timer_count > 12:  # Reset after 180 minutes (12 * 15)
-            self._reset_sleep_timer()
+        """Change to next track or channel."""
+        if self._is_local_playback:
+            await self.request_call('/Sendkey?key=31')
         else:
-            sleep_duration = self._sleep_timer_count * 15 * 60  # Convert to seconds
-            self._sleep_timer_end_time = time.time() + sleep_duration
+            await self.request_call('/Sendkey?key=112')
+
+# SET - Set sleep timer or next track
+    async def async_media_previous_track(self):
+        """Change to previous track or manage sleep timer."""
+        if self._is_local_playback:
+            await self.request_call('/Sendkey?key=32')
+        else:
+            await self.request_call('/Sendkey?key=12')
         
-        await self.async_update()
+            self._sleep_timer_count += 1
+            if self._sleep_timer_count > 12:  # Reset after 180 minutes (12 * 15)
+                self._reset_sleep_timer()
+            else:
+                sleep_duration = self._sleep_timer_count * 15 * 60  # Convert to seconds
+                self._sleep_timer_end_time = time.time() + sleep_duration
+        
+            await self.async_update()
+
