@@ -16,24 +16,19 @@ from homeassistant.helpers import config_validation as cv, discovery
 from homeassistant.helpers import discovery
 from homeassistant.helpers.entity import Entity
 from homeassistant.core import HomeAssistant
-from .const import DOMAIN, CONF_HOST, CONF_NAME
+from homeassistant.config_entries import ConfigEntry
+from .const import DOMAIN, CONF_HOST, CONF_NAME, SUPPORTED_DOMAINS
 
 _LOGGER = logging.getLogger(__name__)
 
 # VERSION
-VERSION = '1.5'
+VERSION = '1.6'
 
 # REQUIREMENTS
 REQUIREMENTS = ['beautifulsoup4==4.6.3']
 
 # LOGGING
 _LOGGER = logging.getLogger(__name__)
-
-# DOMAIN
-# DOMAIN = 'airmusic'
-
-# Supported domains
-SUPPORTED_DOMAINS = ['media_player']
 
 # DEFAULTS
 DEFAULT_PORT = 8080
@@ -84,78 +79,33 @@ CONFIG_SCHEMA = vol.Schema({
         })
 }, extra=vol.ALLOW_EXTRA)
 
-async def async_setup(hass: HomeAssistant, config: dict):
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Airmusic component."""
-    hass.data[DOMAIN] = {}
+    hass.data.setdefault(DOMAIN, {})
+    return True
 
-    if DOMAIN not in config:
-        return True
-
-    _LOGGER.info("Initializing Airmusic devices from YAML configuration")
-
-    airmusic_list = []
-
-    configured_devices = config[DOMAIN].get(CONF_DEVICES, [])
-    for device in configured_devices:
-        airmusic = AirmusicDevice(
-            device.get(CONF_HOST),
-            device.get(CONF_PORT),
-            device.get(CONF_NAME),
-            device.get(CONF_USERNAME),
-            device.get(CONF_PASSWORD),
-            device.get(CONF_TIMEOUT),
-            device.get(CONF_SOURCE),
-            device.get(CONF_IMAGE)
-        )
-
-        _LOGGER.debug("Airmusic device %s configured", device.get(CONF_HOST))
-        airmusic_list.append(airmusic)
-
-    hass.data[DOMAIN] = airmusic_list
-
-    if not airmusic_list:
-        _LOGGER.info("No Airmusic devices configured")
-        return False
-
-    _LOGGER.debug("Configured %s Airmusic devices", len(airmusic_list))
-
-    for domain in SUPPORTED_DOMAINS:
-        hass.async_create_task(
-            discovery.async_load_platform(hass, domain, DOMAIN, {}, config)
-        )
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Airmusic from a config entry."""
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN][entry.entry_id] = entry.data
+    
+    await hass.config_entries.async_forward_entry_setups(entry, SUPPORTED_DOMAINS)
     
     return True
 
-async def async_setup_entry(hass: HomeAssistant, entry):
-    """Set up Airmusic from a config entry."""
-    _LOGGER.info("Setting up Airmusic from config entry")
-
-    host = entry.data[CONF_HOST]
-    name = entry.data[CONF_NAME]
-
-    airmusic = AirmusicDevice(host, None, name, None, None, None, None, None)
-
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = airmusic
-
-    _LOGGER.debug("Airmusic device %s set up from config entry", host)
-
-    for domain in SUPPORTED_DOMAINS:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, domain)
-        )
-
-    return True
-
-async def async_unload_entry(hass: HomeAssistant, entry):
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    _LOGGER.info("Unloading Airmusic config entry")
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, SUPPORTED_DOMAINS)
+    
+    if unload_ok:
+        hass.data[DOMAIN].pop(entry.entry_id)
 
-    hass.data[DOMAIN].pop(entry.entry_id)
+    return unload_ok
 
-    for domain in SUPPORTED_DOMAINS:
-        await hass.config_entries.async_forward_entry_unload(entry, domain)
-
-    return True
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry."""
+    await async_unload_entry(hass, entry)
+    await async_setup_entry(hass, entry)
 
 class AirmusicDevice(Entity):
     """Representation of a Airmusic device."""
