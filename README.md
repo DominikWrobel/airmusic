@@ -12,10 +12,10 @@ It allows you to remotely control your AirMusic compatible internet radios. Shou
   - Change radio channel (Selecting from source list)
   - Current radio channel and current event
   - Supports authentication and multiple receivers
-  - Self INIT, after init the radio will go into standby mode
-  - Station logos work from v0.4
+  - Self INIT upon setup
+  - Station logos work
   - Unique ID is now working
-  - Setup via GUI
+  - Setup via GUI only, yaml now depricated
   - Next track button set to next track in browse media mode, in internet mode next favourite.
   - Previous track button set to previous track in browse media mode, in internet mode sleep time., one press sets sleep time to 15 min, another one adds 15 min up until 180 min then it resets
   - Timer implemented for sleep time, works only when setup from this integration
