@@ -66,10 +66,7 @@ from homeassistant.util import Throttle
 from .const import DOMAIN, CONF_HOST, CONF_NAME
 
 # VERSION
-VERSION = '1.5'
-
-# Dependencies
-# from .airmusicapi import airmusic
+VERSION = '1.6'
 
 # DEFAULTS
 DEFAULT_PORT = 8080
@@ -579,4 +576,3 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
                 self._sleep_timer_end_time = time.time() + sleep_duration
         
             await self.async_update()
-
