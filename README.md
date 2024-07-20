@@ -2,7 +2,7 @@
 
 This is a custom component for the media_player platform of Home Assistant.
 
-It allows you to remotely control your AirMusic compatible internet radios. Should work with any radio using the AirMusic Android and iOS app for control.
+It allows you to remotely control your AirMusic compatible internet radios. Should work with any radio using the AirMusic Control Android or iOS app (https://play.google.com/store/apps/details?id=air.net.mediayou.AirMusicControlApp).
 
 # What is working:
   - Power status and power control: on, off, standby. 
