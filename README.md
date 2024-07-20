@@ -1,3 +1,6 @@
+
+![icon](https://github.com/user-attachments/assets/4ec357a7-4882-4af1-938d-3b97587b6f91)
+
 # Readme
 
 This is a custom component for the media_player platform of Home Assistant.
