@@ -118,3 +118,4 @@ class AirMusicOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="user", data_schema=self.data_schema, errors=errors
         )
+
