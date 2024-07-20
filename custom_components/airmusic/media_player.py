@@ -26,6 +26,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.components import media_source
+from homeassistant.components.upnp.const import DOMAIN as UPNP_DOMAIN
+from homeassistant.components.media_source import is_media_source_id
 
 from custom_components.airmusic import _LOGGER, DOMAIN as AIRMUSIC_DOMAIN
 from homeassistant.components.media_player.const import (
@@ -66,7 +68,7 @@ from homeassistant.util import Throttle
 from .const import DOMAIN, CONF_HOST, CONF_NAME
 
 # VERSION
-VERSION = '1.6'
+VERSION = '1.7'
 
 # DEFAULTS
 DEFAULT_PORT = 8080
@@ -169,9 +171,29 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 
     # Run when added to HASS TO LOAD CHANNELS
     async def async_added_to_hass(self):
-        """Run when entity about to be added."""
+        """Run when entity about to be added to hass."""
         await super().async_added_to_hass()
         await self.load_sources()
+        
+        # Initialize UPnP
+        self.upnp_device = None
+        self.upnp_service = None
+        await self._setup_upnp()
+
+    # Setup UPnP
+    async def _setup_upnp(self):
+        """Set up UPnP for the device."""
+        upnp_component = self.hass.data.get(UPNP_DOMAIN)
+        if upnp_component:
+            devices = upnp_component.devices
+            for device in devices:
+                if device.name == self._name:  # Match UPnP device to this media player
+                    self.upnp_device = device
+                    self.upnp_service = device.av_transport
+                    break
+        
+        if not self.upnp_device:
+            _LOGGER.warning("No matching UPnP device found for %s", self._name)
       
     # Load favorite radio stations
     async def load_sources(self):
@@ -307,17 +329,11 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         return await media_source.async_browse_media(
             self.hass,
             media_content_id,
-            content_filter=lambda item: item.media_content_type.startswith("audio/"),
+#            content_filter=lambda item: item.media_content_type.startswith("audio/"),
         )
 
 # Play media
-    async def async_play_media(
-        self,
-        media_type: str,
-        media_id: str,
-        enqueue: MediaPlayerEntity | None = None,
-        **kwargs: any
-    ) -> None:
+    async def async_play_media(self, media_type, media_id, **kwargs):
         """Play a piece of media."""
         if media_source.is_media_source_id(media_id):
             play_item = await media_source.async_resolve_media(self.hass, media_id, self.entity_id)
@@ -328,14 +344,17 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         processed_media_id = async_process_play_media_url(self.hass, media_id)
 
         if media_type == MediaType.MUSIC:
-            # URL encode the processed_media_id
-            encoded_url = urllib.parse.quote(processed_media_id, safe='')
-            # Construct the local play URL
-            local_play_url = f"/LocalPlay?url={encoded_url}"
-            
-            # Send the request to play the local file
-            await self.request_call(local_play_url)
-            self._is_local_playback = True  # Set to local playback mode
+            if self.upnp_service:
+                # Use UPnP to play the media
+                await self.upnp_service.set_av_transport_uri(processed_media_id)
+                await self.upnp_service.play()
+                self._is_local_playback = True
+            else:
+                # Fallback to previous method if UPnP is not available
+                encoded_url = urllib.parse.quote(processed_media_id, safe='')
+                local_play_url = f"/LocalPlay?url={encoded_url}"
+                await self.request_call(local_play_url)
+                self._is_local_playback = True
         elif media_type == MediaType.CHANNEL:
             # Existing logic for playing radio stations
             try:
@@ -344,7 +363,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
                 _LOGGER.error('Media ID must be positive integer')
                 return
             await self.request_call('/play_stn?id=' + self._sources[processed_media_id])
-            self._is_local_playback = False  # Set to internet radio mode
+            self._is_local_playback = False
         else:
             _LOGGER.error("Unsupported media type")
 
@@ -527,12 +546,26 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 # SET - Media Play
     async def async_media_play(self):
         """Send play command."""
-        await self.request_call('/Sendkey?key=29')
+        if self._is_local_playback and self.upnp_service:
+            await self.upnp_service.play()
+        else:
+            await self.request_call('/Sendkey?key=29')
 
 # SET - Media Pause
     async def async_media_pause(self):
-        """Send media pause command to media player."""
-        await self.request_call('/Sendkey?key=29')
+        """Send pause command."""
+        if self._is_local_playback and self.upnp_service:
+            await self.upnp_service.pause()
+        else:
+            await self.request_call('/Sendkey?key=29')
+
+# SET - Media Stop
+    async def async_media_stop(self):
+        """Send stop command."""
+        if self._is_local_playback and self.upnp_service:
+            await self.upnp_service.stop()
+        else:
+            await self.request_call('/Sendkey?key=30')
 
 # SET - Turn on
     async def async_turn_on(self):
@@ -556,7 +589,14 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def async_media_next_track(self):
         """Change to next track or channel."""
         if self._is_local_playback:
-            await self.request_call('/Sendkey?key=31')
+            if self.upnp_service:
+                try:
+                    await self.upnp_service.next()
+                except Exception as e:
+                    _LOGGER.error("UPnP next track failed: %s. Falling back to default method.", str(e))
+                    await self.request_call('/Sendkey?key=31')
+            else:
+                await self.request_call('/Sendkey?key=31')
         else:
             await self.request_call('/Sendkey?key=112')
 
@@ -564,10 +604,17 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def async_media_previous_track(self):
         """Change to previous track or manage sleep timer."""
         if self._is_local_playback:
-            await self.request_call('/Sendkey?key=32')
+            if self.upnp_service:
+                try:
+                    await self.upnp_service.previous()
+                except Exception as e:
+                    _LOGGER.error("UPnP previous track failed: %s. Falling back to default method.", str(e))
+                    await self.request_call('/Sendkey?key=32')
+            else:
+                await self.request_call('/Sendkey?key=32')
         else:
             await self.request_call('/Sendkey?key=12')
-        
+            
             self._sleep_timer_count += 1
             if self._sleep_timer_count > 12:  # Reset after 180 minutes (12 * 15)
                 self._reset_sleep_timer()
@@ -575,4 +622,4 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
                 sleep_duration = self._sleep_timer_count * 15 * 60  # Convert to seconds
                 self._sleep_timer_end_time = time.time() + sleep_duration
         
-            await self.async_update()
+        await self.async_update()
