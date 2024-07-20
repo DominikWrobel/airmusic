@@ -22,7 +22,7 @@ from .const import DOMAIN, CONF_HOST, CONF_NAME, SUPPORTED_DOMAINS
 _LOGGER = logging.getLogger(__name__)
 
 # VERSION
-VERSION = '1.6'
+VERSION = '1.7'
 
 # REQUIREMENTS
 REQUIREMENTS = ['beautifulsoup4==4.6.3']
@@ -177,6 +177,8 @@ class AirmusicDevice(Entity):
     def get_opener(self):
         """Return the socket of the device."""
         return self._opener
+
+
 
 
 
