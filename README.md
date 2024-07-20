@@ -77,6 +77,8 @@ The Internet radios need to have static IP set up.
 
 ![1](https://github.com/DominikWrobel/airmusic/assets/89667597/c4b380e1-ffc7-4af3-84a3-8b54ec463657)
 
+![Przechwytywanie](https://github.com/user-attachments/assets/19bf7125-bd2b-4152-ba95-7a1f63d1c5a4)
+
 ![album](https://github.com/user-attachments/assets/d7ff1719-38a8-4b89-99a9-31c1b49ac656)
 
 ![2](https://github.com/DominikWrobel/airmusic/assets/89667597/a22cdfd1-31da-4774-9fd4-916758d5e019)
