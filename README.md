@@ -23,7 +23,7 @@ This incloudes brands like Oakcastle, Majority, Ferguson, Blow, Blaupunkt, Dual,
   - Next track button set to next track in browse media mode, in internet mode next favourite.
   - Previous track button set to previous track in browse media mode, in internet mode sleep time., one press sets sleep time to 15 min, another one adds 15 min up until 180 min then it resets
   - Timer implemented for sleep time, works only when setup from this integration
-  - EXPERIMENTAL media browser was implemented, from v1.7 local media via DLNA server work, Radio Browser works, some TTS services work.
+  - EXPERIMENTAL media browser was implemented, from v1.7 local media via DLNA server work, Radio Browser works.
 
 # What is not working right now:
   - No source selection, only Internet Radio is available
