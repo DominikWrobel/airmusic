@@ -6,8 +6,10 @@ Using shell_command.yaml which you add to your configuration.yaml and remote.yam
 
 # Available remote buttons
 
-For self init button you can use this code: 
+For self init button you can use this code:
+
 kuchnia_init: "curl -H 'Authorization: Basic c3UzZzRnbzZzazc6amkzOTQ1NHh1L14=' http://192.168.0.142/init?language=pl" 
+
 change the language= to your language.
 
 Change the value at the end of Sendkey?key=
