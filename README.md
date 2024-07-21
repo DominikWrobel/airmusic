@@ -27,7 +27,7 @@ This incloudes brands like Oakcastle, Majority, Ferguson, Blow, Blaupunkt, Dual,
 
 # What is not working right now:
   - No source selection, only Internet Radio is available
-  - This integration will work correctly only in Internet Redio mode
+  - This integration will work correctly only in Internet Redio mode and using media browser
 
 # Minimum Requirements
   - Homeassistant core 2024.5.0
