@@ -92,7 +92,7 @@ description: ""
 icon: mdi:radio
 ```
 
-Restart Home Assistant. Then add in any dashboard you want an entities card with this code, with one radio station skip the input_select part:
+Restart Home Assistant. Then add in any dashboard you want an entities card with this code, with one radio skip the input_select part:
 
 ```
 type: entities
