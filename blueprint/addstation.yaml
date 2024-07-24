@@ -1,0 +1,37 @@
+blueprint:
+  name: "Add Favorite Radio Station"
+  description: "Adds a new favorite radio station to your device using a shell command."
+  domain: automation
+  input:
+    radio_ip:
+      name: Radio IP Address
+      description: "The IP address of your radio device"
+      selector:
+        text:
+    station_name:
+      name: Station Name
+      description: "The name of the radio station"
+      selector:
+        text:
+    station_url:
+      name: Station URL
+      description: "The URL of the radio station"
+      selector:
+        text:
+
+variables:
+  radio_ip: !input radio_ip
+  station_name: !input station_name
+  station_url: !input station_url
+
+sequence:
+  - service: shell_command.add_radio_station
+    data:
+      radio_ip: "{{ radio_ip }}"
+      station_name: "{{ station_name }}"
+      station_url: "{{ station_url | urlencode }}"
+
+shell_command:
+  add_radio_station: >
+    curl -H 'Authorization: Basic c3UzZzRnbzZzazc6amkzOTQ1NHh1L14=' 
+    http://{{ radio_ip }}/AddRadioStation?name={{ station_name }}&url={{ station_url }}
