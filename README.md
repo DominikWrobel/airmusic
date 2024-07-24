@@ -87,9 +87,13 @@ The Internet radios need to have static IP set up.
 
 ![2](https://github.com/DominikWrobel/airmusic/assets/89667597/a22cdfd1-31da-4774-9fd4-916758d5e019)
 
-# Remote
+# Remote and adding a new favourite radio station
 
 I've added a simple remote at (https://github.com/DominikWrobel/airmusic/tree/main/remote) using shell_command and button cards. Remote can be used with or without this integration.
+
+I've added a script, shell_command and helpers to add new favourite radio station from Home Assistant dashboard!
+
+![nowa](https://github.com/user-attachments/assets/a1ff185a-f5cc-4a8a-91ec-4ae01738187d)
 
 # Support
 
