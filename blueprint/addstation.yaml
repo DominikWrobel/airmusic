@@ -19,19 +19,13 @@ blueprint:
       selector:
         text:
 
-variables:
-  radio_ip: !input radio_ip
-  station_name: !input station_name
-  station_url: !input station_url
+trigger:
+  - platform: event
+    event_type: add_radio_station
 
-sequence:
+action:
   - service: shell_command.add_radio_station
     data:
       radio_ip: "{{ radio_ip }}"
       station_name: "{{ station_name }}"
       station_url: "{{ station_url | urlencode }}"
-
-shell_command:
-  add_radio_station: >
-    curl -H 'Authorization: Basic c3UzZzRnbzZzazc6amkzOTQ1NHh1L14=' 
-    http://{{ radio_ip }}/AddRadioStation?name={{ station_name }}&url={{ station_url }}
