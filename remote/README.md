@@ -87,7 +87,7 @@ sequence:
       message: >
         Added station "{{ states("input_text.station_name") }}"  with URL "{{
         states("input_text.station_url") }}"  to radio at {{
-        states("input_text.radio_ip") }}
+        states("input_select.radio_ip") }}
 description: ""
 icon: mdi:radio
 ```
