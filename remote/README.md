@@ -54,4 +54,55 @@ Change the value at the end of Sendkey?key=
 |122| "8"           |
 |123| "9"           |
 
+# Add new favourite station:
 
+With this script, helpers and shell_command you can add a new favourite station directly to your radio form Home Assistant!
+
+First add three helpers:
+ - input_select named Radio IP and add your radio IPs to select (you can skip this if you have only one Airmusic radio)
+ - imput_text named Station Name
+ - input_text named Station URL
+
+Add a new shell_command to your configuration.yaml:
+
+```
+shell_command:
+  add_radio_station: >
+    curl -H 'Authorization: Basic c3UzZzRnbzZzazc6amkzOTQ1NHh1L14=' 
+    'http://{{ states("input_select.radio_ip") }}/AddRadioStation?name={{ states("input_text.station_name") | urlencode }}&url={{ states("input_text.station_url") | urlencode }}'
+```
+
+If you have only one Airmusic radio change {{ states("input_select.radio_ip") }} to your radio IP.
+
+Creat a new script and paste this:
+
+```
+alias: Add new station
+sequence:
+  - service: shell_command.add_radio_station
+    data: {}
+  - service: persistent_notification.create
+    data:
+      title: Radio Station Added
+      message: >
+        Added station "{{ states("input_text.station_name") }}"  with URL "{{
+        states("input_text.station_url") }}"  to radio at {{
+        states("input_text.radio_ip") }}
+description: ""
+icon: mdi:radio
+```
+
+Restart Home Assistant. Then add in any dashboard you want an entities card with this code, with one radio station skip the input_select part:
+
+```
+type: entities
+entities:
+  - entity: input_select.radio_ip
+  - entity: input_text.station_name
+  - entity: input_text.station_url
+  - entity: script.add_new_station
+```
+
+![nowa](https://github.com/user-attachments/assets/fd77fc73-7c77-4e99-ac02-31129cb4109c)
+
+Fill out all the fields and hit run, you will get a notification that new station has been added. Remember to reload the Airmusic integration to see the new station in your media_player card!
