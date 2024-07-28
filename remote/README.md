@@ -31,6 +31,7 @@ Change the value at the end of Sendkey?key=
 |13 | Language      |
 |14 | Screen dim    |
 |15 | Favourites    |
+|17 | "0"           |
 |19 | EQ            |
 |28 | Mode          |
 |29 | Play / Pause  |
@@ -38,6 +39,8 @@ Change the value at the end of Sendkey?key=
 |31 | Next Track    |
 |32 | Previous Track|
 |36 | USB           |
+|37 | FM            |
+|39 | AUX           |
 |40 | IntenretRadio |
 |105| PowerSaving   |
 |106| EqualizerFlat |
