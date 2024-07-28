@@ -44,6 +44,7 @@ Change the value at the end of Sendkey?key=
 |110| SystemMenu    |
 |111| WPS           |
 |112| NextFav       |
+|113| DAB           |
 |115| "1"           |
 |116| "2"           |
 |117| "3"           |
@@ -53,6 +54,7 @@ Change the value at the end of Sendkey?key=
 |121| "7"           |
 |122| "8"           |
 |123| "9"           |
+|124| "10"          |
 
 # Add new favourite station:
 
