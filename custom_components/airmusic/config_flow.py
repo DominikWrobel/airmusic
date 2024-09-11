@@ -31,7 +31,7 @@ class AirMusicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         rt_element = root.find('rt')
                         if rt_element is not None and rt_element.text == 'INVALID_CMD':
                             # Initialize the device
-                            init_url = f"http://{host}/init"
+                            init_url = f"http://{host}/init?language=en"
                             async with session.get(init_url, auth=aiohttp.BasicAuth(DEFAULT_USERNAME, DEFAULT_PASSWORD)) as init_response:
                                 if init_response.status != 200:
                                     errors["base"] = "init_failed"
@@ -89,7 +89,7 @@ class AirMusicOptionsFlow(config_entries.OptionsFlow):
                         rt_element = root.find('rt')
                         if rt_element is not None and rt_element.text == 'INVALID_CMD':
                             # Initialize the device
-                            init_url = f"http://{host}/init"
+                            init_url = f"http://{host}/init?language=en"
                             async with session.get(init_url, auth=aiohttp.BasicAuth(DEFAULT_USERNAME, DEFAULT_PASSWORD)) as init_response:
                                 if init_response.status != 200:
                                     errors["base"] = "init_failed"
