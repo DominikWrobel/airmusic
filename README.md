@@ -4,7 +4,7 @@ This is a custom component for the media_player platform of Home Assistant.
 
 It allows you to remotely control your AirMusic compatible internet radios. Should work with any radio using the AirMusic Control Android or iOS app (https://play.google.com/store/apps/details?id=air.net.mediayou.AirMusicControlApp).
 
-This incloudes brands like Oakcastle, Majority, Ferguson, Blow, Blaupunkt, Dual, Camry, TechniSat, Kruger&matz, Audizio, Dabman, Imperial, Soundmaster, Oneconcept, Lenco, Xoro, Technaxx, Sharp, Conrad’s
+This incloudes brands like Oakcastle, Majority, Ferguson, Blow, Blaupunkt, Dual, Camry, TechniSat, Kruger&matz, Audizio, Dabman, Imperial, Soundmaster, Oneconcept, Lenco, Xoro, Technaxx, Sharp, Conrad’s, Albrecht
 
 ![icon](https://github.com/user-attachments/assets/295d78bc-64c9-4260-8e27-1deb0477cf38)
 
