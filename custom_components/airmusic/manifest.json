@@ -3,7 +3,7 @@
   "name": "AirMusic Integration",
   "codeowners": ["@DominikWrobel"],
   "config_flow": true,
-  "dependencies": ["logger"],
+  "dependencies": ["logger", "upnp"],
   "documentation": "https://github.com/DominikWrobel/airmusic",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/DominikWrobel/airmusic/issues",
