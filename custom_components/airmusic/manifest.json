@@ -1,12 +1,12 @@
 {
   "domain": "airmusic",
   "name": "AirMusic Integration",
-  "version": "1.7",
-  "documentation": "https://github.com/DominikWrobel/airmusic",
-  "issue_tracker": "https://github.com/DominikWrobel/airmusic/issues",
-  "dependencies": [],
-  "codeowners": ["DominikWrobel"],
+  "codeowners": ["@DominikWrobel"],
   "config_flow": true,
+  "dependencies": ["logger"],
+  "documentation": "https://github.com/DominikWrobel/airmusic",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/DominikWrobel/airmusic/issues",
   "requirements": ["beautifulsoup4>=4.6.3"],
-  "iot_class": "local_polling"
+  "version": "1.7"
 }
