@@ -30,14 +30,6 @@ from homeassistant.components.upnp.const import DOMAIN as UPNP_DOMAIN
 from homeassistant.components.media_source import is_media_source_id
 
 from custom_components.airmusic import _LOGGER, DOMAIN as AIRMUSIC_DOMAIN
-from homeassistant.components.media_player.const import (
-    MEDIA_TYPE_ALBUM, 
-    MEDIA_TYPE_ARTIST,
-    MEDIA_TYPE_PLAYLIST,
-    MEDIA_TYPE_CHANNEL,
-    MEDIA_CLASS_DIRECTORY,
-    MEDIA_CLASS_MUSIC
-)
 
 from homeassistant.components.media_player.browse_media import (
     BrowseMedia,
@@ -45,6 +37,7 @@ from homeassistant.components.media_player.browse_media import (
 )
 
 from homeassistant.components.media_player import (
+    MediaClass,
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
     MediaPlayerState,
@@ -412,7 +405,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     @property
     def media_content_type(self):
         """Content type of current playing media."""
-        return MEDIA_TYPE_ARTIST
+        return MediaType.ARTIST
 
 # GET - Content id - Current Station name
     @property
