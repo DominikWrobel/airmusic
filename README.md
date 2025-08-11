@@ -54,10 +54,8 @@ custom_components
 │   │   └── en.json
 ```
 # Install with HACS recomended:
-It is possible to add it as a custom repository.
 
-If you are using HACS, go to HACS -> Integrations and click on the 3 dots (top righ corner).
-Then choose custom repositories, and add this repository url (https://github.com/DominikWrobel/airmusic), choosing the Integration category.
+This intergration is now in default HACS, just search for Airmusic and install.
 
 That's it, and you will be notified by HACS on every release.
 Just click on upgrade.
