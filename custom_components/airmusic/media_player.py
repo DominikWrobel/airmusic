@@ -227,49 +227,60 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def async_update(self):
         """Update device status."""
         playinfo_xml = await self.request_call('/playinfo')
+        if not playinfo_xml:
+            _LOGGER.warning("Airmusic: No response from device")
+            return
+            
         soup = BeautifulSoup(playinfo_xml, features="xml")
 
         # Update power state
-        pwstate = soup.result.renderContents().decode('UTF8')
-        self._update_power_state(pwstate)
+        if soup.result:
+            pwstate = soup.result.renderContents().decode('UTF8')
+            self._update_power_state(pwstate)
+        else:
+            _LOGGER.warning("Airmusic: No result element in response")
+            return
 
-        # If powered on, update other information
+        # If powered on, update other information from same response
         if self._pwstate in ['playing', 'idle', 'buffering', 'paused']:
             self._update_media_info(soup)
-            await self._update_volume_info()
+            self._update_volume_info(soup)
 
-    async def _update_volume_info(self):
-        """Update volume and mute status."""
-        volume_xml = await self.request_call('/playinfo')
-        soup = BeautifulSoup(volume_xml, features="xml")
-        vol = soup.vol.renderContents().decode('UTF8')
-        mute = soup.mute.renderContents().decode('UTF8')
-
-        self._volume = int(vol) / MAX_VOLUME if vol else None
-        self._muted = (mute == '1') if mute else None
+    def _update_volume_info(self, soup):
+        """Update volume and mute status from parsed XML."""
+        if soup.vol:
+            vol = soup.vol.renderContents().decode('UTF8')
+            self._volume = int(vol) / MAX_VOLUME if vol else None
+        else:
+            self._volume = None
+            
+        if soup.mute:
+            mute = soup.mute.renderContents().decode('UTF8')
+            self._muted = (mute == '1') if mute else None
+        else:
+            self._muted = None
 
     def _update_power_state(self, pwstate):
-        """Update power state based on playinfo response."""
+        """Update power state based on playinfo response.
+        
+        Status ID (sid) meanings:
+        1=not playing, 2=buffering, 5=buffer 100%, 6=playing,
+        7=ending, 9=paused, 12=reading file, 14=failed to connect
+        """
         if pwstate.find('FAIL') >= 0:
-            self._pwstate = 'true'
-        elif pwstate.find('INVALID_CMD') >= 0:
             self._pwstate = 'idle'
-        elif pwstate.find('sid>1') >= 0:
+        elif pwstate.find('INVALID_CMD') >= 0:
             self._pwstate = 'idle'
         elif pwstate.find('sid>6') >= 0:
             self._pwstate = 'playing'
-        elif pwstate.find('sid>2') >= 0:
+        elif pwstate.find('sid>2') >= 0 or pwstate.find('sid>5') >= 0:
             self._pwstate = 'buffering'
         elif pwstate.find('sid>9') >= 0:
             self._pwstate = 'paused'
-        elif pwstate.find('sid>7') >= 0:
-            self._pwstate = 'idle'
-        elif pwstate.find('sid>12') >= 0:
-            self._pwstate = 'idle'
-        elif pwstate.find('sid>14') >= 0:
+        elif pwstate.find('sid>1') >= 0 or pwstate.find('sid>7') >= 0 or pwstate.find('sid>12') >= 0 or pwstate.find('sid>14') >= 0:
             self._pwstate = 'idle'
         else:
-            self._pwstate = 'unknown'
+            self._pwstate = 'idle'
 
     def _update_media_info(self, soup):
         """Update media information from playinfo response."""
