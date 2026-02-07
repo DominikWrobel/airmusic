@@ -268,7 +268,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         7=ending, 9=paused, 12=reading file, 14=failed to connect
         """
         if pwstate.find('FAIL') >= 0:
-            self._pwstate = 'idle'
+            self._pwstate = 'true'
         elif pwstate.find('INVALID_CMD') >= 0:
             self._pwstate = 'idle'
         elif pwstate.find('sid>6') >= 0:
@@ -280,7 +280,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         elif pwstate.find('sid>1') >= 0 or pwstate.find('sid>7') >= 0 or pwstate.find('sid>12') >= 0 or pwstate.find('sid>14') >= 0:
             self._pwstate = 'idle'
         else:
-            self._pwstate = 'idle'
+            self._pwstate = 'unknown'
 
     def _update_media_info(self, soup):
         """Update media information from playinfo response."""
