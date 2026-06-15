@@ -17,6 +17,10 @@ import time
 from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
 import os
+import re
+import html
+import mimetypes
+import unicodedata
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -95,6 +99,22 @@ SUPPORT_AIRMUSIC = (
 
 MAX_VOLUME = 30
 
+# Fallback station names when /playinfo does not provide <station_info>.
+# Matching is case-insensitive and checks whether the pattern exists in TrackURI.
+# Add your own stations here, for example:
+#     "part_of_stream_url": "Station Name",
+STREAM_STATION_MAP = {
+    "r.dcs.redcdn.pl/sc/o2/Eurozet/live/antyradio.livx?audio=5": "Antyradio",
+    "stream.rcs.revma.com/1nnezw8qz7zuv": "Eska Rock",
+    "radiostream.pl/tuba8-1.mp3": "Rock Radio",
+    "waw.ic.smcdn.pl/5380-1.mp3": "Eska Rock Wa-wa",
+    "stream.rcs.revma.com/ypqt40u0x1zuv": "Radio Nowy Świat",
+    "radiostream.pl/tuba8918-1.mp": "Złote Przeboje",
+    "ml.cdn.eurozet.pl/mel-ldz.mp3": "Meloradio",
+    "radiostream.pl/tuba10-1.mp3": "TOK FM",
+    "stream.rcs.revma.com/an1ugyygzk8uv": "Radio 357",
+}
+
 # SETUP PLATFORM
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up platform."""                         
@@ -152,7 +172,10 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._selected_source = ''
         self._selected_media_content_id = ''
         self._selected_media_title = ''
-        self._image_url = {}
+        self._image_url = None
+        self._fallback_image_path = None
+        self._fallback_image_content_type = None
+        self._fallback_image_hash = None
         self._source_name = None
         self._source_names = {}
         self._sources = {}
@@ -161,6 +184,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._sleep_timer_count = 0
         self._sleep_timer_end_time = None
         self._is_local_playback = False
+        self._stream_station_map = STREAM_STATION_MAP
 
     # Run when added to HASS TO LOAD CHANNELS
     async def async_added_to_hass(self):
@@ -222,6 +246,103 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
                 _LOGGER.error("Connection error: %s", str(e))
                 return None
 
+    async def get_track_uri(self):
+        """Get the current stream URL from AVTransport GetPositionInfo."""
+        url = f"http://{self._host}:52525/AVTransport/Control"
+
+        body = """<?xml version=\"1.0\"?>
+<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"
+ s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">
+ <s:Body>
+  <u:GetPositionInfo xmlns:u=\"urn:schemas-upnp-org:service:AVTransport:1\">
+   <InstanceID>0</InstanceID>
+  </u:GetPositionInfo>
+ </s:Body>
+</s:Envelope>"""
+
+        headers = {
+            "Content-Type": 'text/xml; charset="utf-8"',
+            "SOAPACTION": '"urn:schemas-upnp-org:service:AVTransport:1#GetPositionInfo"',
+        }
+
+        try:
+            async with self._opener.post(url, data=body, headers=headers) as resp:
+                text = await resp.text()
+
+            # Normal XML response: <TrackURI>http://...</TrackURI>
+            match = re.search(
+                r"<TrackURI>(.*?)</TrackURI>",
+                text,
+                re.IGNORECASE | re.DOTALL,
+            )
+            if match:
+                track_uri = html.unescape(match.group(1).strip())
+                _LOGGER.debug("Airmusic: current TrackURI: %s", track_uri)
+                return track_uri
+
+            _LOGGER.debug("Airmusic: TrackURI not found in AVTransport response")
+
+        except Exception as err:
+            _LOGGER.debug("Airmusic: unable to get TrackURI: %s", err)
+
+        return None
+
+    def _station_name_from_track_uri(self, track_uri):
+        """Return station name from TrackURI using STREAM_STATION_MAP."""
+        if not track_uri:
+            return None
+
+        track_uri_lower = track_uri.lower()
+        for pattern, name in self._stream_station_map.items():
+            if pattern.lower() in track_uri_lower:
+                return name
+
+        return None
+
+    def _logo_filename_from_station_name(self, station_name):
+        """Return logo file name in /config/www based on station name."""
+        if not station_name:
+            return None
+
+        normalized = unicodedata.normalize("NFKD", station_name)
+        ascii_name = normalized.encode("ascii", "ignore").decode("ascii")
+        safe_name = re.sub(r"[^a-z0-9]+", "", ascii_name.lower())
+
+        if not safe_name:
+            return None
+
+        return f"{safe_name}.png"
+
+    def _set_fallback_station_logo(self, station_name):
+        """Use local /config/www logo if it exists; otherwise use no image."""
+        self._fallback_image_path = None
+        self._fallback_image_content_type = None
+        self._fallback_image_hash = None
+
+        logo_filename = self._logo_filename_from_station_name(station_name)
+        if not logo_filename:
+            return
+
+        logo_path = self.hass.config.path("www", logo_filename)
+        if not os.path.isfile(logo_path):
+            _LOGGER.debug(
+                "Airmusic: fallback logo not found for %s: %s",
+                station_name,
+                logo_path,
+            )
+            return
+
+        self._fallback_image_path = logo_path
+        self._fallback_image_content_type = (
+            mimetypes.guess_type(logo_path)[0] or "image/png"
+        )
+        self._fallback_image_hash = f"local-{logo_filename}-{int(os.path.getmtime(logo_path))}"
+        _LOGGER.debug(
+            "Airmusic: using fallback logo for %s: %s",
+            station_name,
+            logo_path,
+        )
+
     # Component Update
     @Throttle(MIN_TIME_BETWEEN_SCANS)
     async def async_update(self):
@@ -243,7 +364,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 
         # If powered on, update other information from same response
         if self._pwstate in ['playing', 'idle', 'buffering', 'paused']:
-            self._update_media_info(soup)
+            await self._update_media_info(soup)
             self._update_volume_info(soup)
 
     def _update_volume_info(self, soup):
@@ -282,10 +403,29 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         else:
             self._pwstate = 'unknown'
 
-    def _update_media_info(self, soup):
+    async def _update_media_info(self, soup):
         """Update media information from playinfo response."""
         current_time = int(time.time())
-        self._selected_source = soup.station_info.renderContents().decode('UTF8') if soup.station_info else str(current_time)
+        fallback_source = str(current_time)
+
+        station_info = (
+            soup.station_info.renderContents().decode('UTF8').strip()
+            if soup.station_info
+            else ""
+        )
+
+        if station_info:
+            self._selected_source = station_info
+        else:
+            track_uri = await self.get_track_uri()
+            mapped_station_name = self._station_name_from_track_uri(track_uri)
+
+            if mapped_station_name:
+                self._selected_source = mapped_station_name
+            else:
+                # Preserve old integration behaviour when no station name is available.
+                self._selected_source = fallback_source
+
         eventid = soup.artist.renderContents().decode('UTF8') if soup.artist else None
         eventtitle = soup.song.renderContents().decode('UTF8') if soup.song else None
 
@@ -312,14 +452,20 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             self._sleep_timer_count = 0
             self._sleep_timer_end_time = None
     
-        # Update image URL
+        # Update image URL. Prefer the image supplied by the radio.
+        # If the radio does not provide one, try a local fallback logo from /config/www.
+        self._image_url = None
+        self._fallback_image_path = None
+        self._fallback_image_content_type = None
+        self._fallback_image_hash = None
+
         imagelogo = soup.result.renderContents().decode('UTF8')
         if imagelogo.find('<album_img>') >= 0:
             self._image_url = f'http://{self._host}:8080/album.jpg'
         elif imagelogo.find('<logo_img>') >= 0:
             self._image_url = f'http://{self._host}:8080/playlogo.jpg'
-        else:
-            self._image_url = None
+        elif self._selected_source != fallback_source:
+            self._set_fallback_station_logo(self._selected_source)
 
     async def async_will_remove_from_hass(self):
         """Cleanup when entity is removed from Home Assistant."""
@@ -433,11 +579,17 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 # GET - Radio station logo
     @property
     def media_image_url(self):
-        """Image of current playing media."""
+        """Image URL supplied directly by the radio, if available."""
         if self._image_url:
             current_time = int(time.time())
-            return f"{self._image_url}&t={current_time}"
+            separator = "&" if "?" in self._image_url else "?"
+            return f"{self._image_url}{separator}t={current_time}"
         return None
+
+    @property
+    def media_image_hash(self):
+        """Hash for locally proxied fallback logos."""
+        return self._fallback_image_hash
         
     @Throttle(MIN_TIME_BETWEEN_SCANS)    
     async def async_update_media_image_url(self):
@@ -448,20 +600,51 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             imagelogo = soup.result.renderContents().decode('UTF8')
             current_time = int(time.time())
 
+            self._image_url = None
+            self._fallback_image_path = None
+            self._fallback_image_content_type = None
+            self._fallback_image_hash = None
+
             if imagelogo.find('<album_img>') >= 0:
-                self._image_url = f'http://{self._host}:{self._port}/album.jpg?t={current_time}'
+                self._image_url = f'http://{self._host}:{self._port}/album.jpg'
             elif imagelogo.find('<logo_img>') >= 0:
-                self._image_url = f'http://{self._host}:{self._port}/playlogo.jpg?t={current_time}'
-            else:
-                self._image_url = None
+                self._image_url = f'http://{self._host}:{self._port}/playlogo.jpg'
+            elif self._selected_source:
+                self._set_fallback_station_logo(self._selected_source)
 
             _LOGGER.debug("Airmusic: [update_media_image_url] - Image URL updated: %s", self._image_url)
         else:
             self._image_url = None
+            self._fallback_image_path = None
+            self._fallback_image_content_type = None
+            self._fallback_image_hash = None
 
     async def async_get_media_image(self):
         """Fetch the media image of the current playing media."""
-        _LOGGER.debug("Airmusic: [async_get_media_image] - Called with image URL: %s", self._image_url)
+        _LOGGER.debug(
+            "Airmusic: [async_get_media_image] - Called with image URL: %s, fallback path: %s",
+            self._image_url,
+            self._fallback_image_path,
+        )
+
+        # Local fallback logo from /config/www, returned through HA media proxy.
+        if self._fallback_image_path:
+            if not os.path.isfile(self._fallback_image_path):
+                _LOGGER.debug(
+                    "Airmusic: [async_get_media_image] - Fallback image missing: %s",
+                    self._fallback_image_path,
+                )
+                return None, None
+
+            try:
+                with open(self._fallback_image_path, "rb") as image_file:
+                    return image_file.read(), self._fallback_image_content_type or "image/png"
+            except OSError as err:
+                _LOGGER.debug(
+                    "Airmusic: [async_get_media_image] - Unable to read fallback image: %s",
+                    err,
+                )
+                return None, None
 
         if self._image_url is None:
             _LOGGER.debug("Airmusic: [async_get_media_image] - No image URL set")
