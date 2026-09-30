@@ -21,6 +21,7 @@ import re
 import html
 import mimetypes
 import unicodedata
+import hashlib
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -651,8 +652,16 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 
     @property
     def media_image_hash(self):
-        """Hash for locally proxied fallback logos."""
-        return self._fallback_image_hash
+        """Hash for proxied images (fallback logo or image supplied by the radio)."""
+        if self._fallback_image_hash:
+            return self._fallback_image_hash
+        # PATCH: without a hash HA returns no entity_picture at all, so images
+        # supplied by the radio (logo_img / album_img) were never shown.
+        # Hash changes with station/song so the frontend reloads the image.
+        if self._image_url:
+            key = f"{self._image_url}|{self._selected_media_title}"
+            return hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
+        return None
         
     @Throttle(MIN_TIME_BETWEEN_SCANS)    
     async def async_update_media_image_url(self):
