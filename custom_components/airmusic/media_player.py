@@ -185,6 +185,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._sleep_timer_end_time = None
         self._is_local_playback = False
         self._stream_station_map = STREAM_STATION_MAP
+        self._init_station_name = None
 
     # Run when added to HASS TO LOAD CHANNELS
     async def async_added_to_hass(self):
@@ -216,6 +217,9 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def load_sources(self):
         """Initialize the Airmusic device loading the sources."""
         list_xml = await self.request_call('/list?id=75&start=1&count=20')
+        if not list_xml:
+            _LOGGER.warning("Airmusic: radio not reachable, source list not loaded")
+            return
         soup = BeautifulSoup(list_xml, features="xml")
     
         src_names = [src_name.string for src_name in soup.find_all('name')]
@@ -242,8 +246,8 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
                     text = await resp.text()
                 await asyncio.sleep(1)  # 1 second delay between requests
                 return text
-            except aiohttp.ClientConnectorError as e:
-                _LOGGER.error("Connection error: %s", str(e))
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                _LOGGER.debug("Airmusic: connection error %s: %s", uri, e)
                 return None
 
     async def get_track_uri(self):
@@ -349,9 +353,24 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         """Update device status."""
         playinfo_xml = await self.request_call('/playinfo')
         if not playinfo_xml:
-            _LOGGER.warning("Airmusic: No response from device")
+            _LOGGER.debug("Airmusic: No response from device")
+            self._attr_available = False
             return
-            
+        self._attr_available = True
+        if not self._sources:
+            await self.load_sources()
+
+        # PATCH: session lost (e.g. after power loss) -> re-init
+        if 'INVALID_CMD' in playinfo_xml:
+            await self._radio_init()
+            playinfo_xml = await self.request_call('/playinfo') or ''
+
+        # PATCH: /playinfo does not give data (FAIL / INVALID_CMD) while the
+        # radio plays in background -> use /background_play_status
+        if '<sid>' not in playinfo_xml:
+            await self._update_from_background()
+            return
+
         soup = BeautifulSoup(playinfo_xml, features="xml")
 
         # Update power state
@@ -366,6 +385,50 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         if self._pwstate in ['playing', 'idle', 'buffering', 'paused']:
             await self._update_media_info(soup)
             self._update_volume_info(soup)
+
+    async def _radio_init(self):
+        """PATCH: (re)initialize radio API session, read current station name."""
+        init_xml = await self.request_call('/init?language=en')
+        if not init_xml:
+            return
+        soup = BeautifulSoup(init_xml, features="xml")
+        if soup.cur_play_name and soup.cur_play_name.string:
+            self._init_station_name = soup.cur_play_name.string.strip()
+        if not self._sources:
+            await self.load_sources()
+
+    async def _update_from_background(self):
+        """PATCH: read state from /background_play_status."""
+        bg_xml = await self.request_call('/background_play_status')
+        if bg_xml and 'INVALID_CMD' in bg_xml:
+            await self._radio_init()
+            bg_xml = await self.request_call('/background_play_status')
+        if not bg_xml or '<sid>' not in bg_xml:
+            self._pwstate = 'true'  # treat as off / standby
+            return
+
+        prev_state = self._pwstate
+        soup = BeautifulSoup(bg_xml, features="xml")
+        self._update_power_state(bg_xml)
+        # PATCH: in standby the radio returns playinfo=FAIL + sid=1;
+        # it cannot be told apart from "on, not playing" -> report as off
+        if re.search(r'<sid>\s*1\s*</sid>', bg_xml):
+            self._pwstate = 'true'
+        self._update_volume_info(soup)
+
+        # Station changed/started (buffering -> playing): refresh name via init
+        if self._pwstate == 'playing' and prev_state != 'playing':
+            await self._radio_init()
+
+        station = None
+        if self._pwstate in ['playing', 'buffering', 'paused']:
+            track_uri = await self.get_track_uri()
+            station = self._station_name_from_track_uri(track_uri) or self._init_station_name
+        self._selected_source = station or ''
+        self._selected_media_title = station or ''
+        self._image_url = None
+        if station:
+            self._set_fallback_station_logo(station)
 
     def _update_volume_info(self, soup):
         """Update volume and mute status from parsed XML."""
