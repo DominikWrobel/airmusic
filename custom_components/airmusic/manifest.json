@@ -16,5 +16,5 @@
     "beautifulsoup4>=4.6.3",
     "lxml>=4.9.0"
   ],
-  "version": "2.0b1"
+  "version": "2.0"
 }
