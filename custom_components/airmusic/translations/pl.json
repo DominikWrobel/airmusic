@@ -1,14 +1,85 @@
 {
-    "config": {
-        "step": {
-            "user": {
-                "data": {
-                    "host": "Adres IP",
-                    "name": "Nazwa"
-                },
-                "description": "Wpisz adres IP swojego radia.",
-                "title": "Ustaw swoje radio internetowe Airmusic"
-            }
+  "config": {
+    "step": {
+      "user": {
+        "title": "Konfiguracja AirMusic",
+        "data": {
+          "host": "Adres IP lub host",
+          "name": "Nazwa"
         }
+      }
+    },
+    "error": {
+      "cannot_connect": "Brak połączenia z radiem.",
+      "invalid_host": "Wpisz adres IP lub nazwę hosta bez http:// i bez portu.",
+      "invalid_response": "Radio zwróciło nieprawidłową odpowiedź XML.",
+      "init_failed": "Nie udało się zainicjalizować API radia.",
+      "name_required": "Wpisz nazwę stacji.",
+      "duplicate_station": "Takie mapowanie już istnieje. Edytuj istniejący wpis.",
+      "invalid_logo": "Logo musi mieć adres /local/... albo pełny adres http:// lub https://."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Ustawienia AirMusic",
+        "menu_options": {
+          "add_station": "Dodaj stację",
+          "edit_station": "Edytuj stację",
+          "delete_station": "Usuń stację",
+          "device": "Adres i nazwa radia"
+        }
+      },
+      "add_station": {
+        "title": "Mapowanie stacji",
+        "description": "Fragment adresu strumienia dopasowuje stację bez względu na wielkość liter. Pusty fragment oznacza dopasowanie do nazwy zwracanej przez radio. Własna nazwa i logo mają pierwszeństwo. Logo jest opcjonalne: np. /local/loga/rns.png albo https://serwer/logo.png. Pliki /local/ umieść w /config/www/.",
+        "data": {
+          "pattern": "Fragment adresu strumienia (opcjonalny)",
+          "name": "Nazwa stacji",
+          "logo": "Adres logo (opcjonalny)"
+        }
+      },
+      "station": {
+        "title": "Mapowanie stacji",
+        "description": "Fragment adresu strumienia dopasowuje stację bez względu na wielkość liter. Pusty fragment oznacza dopasowanie do nazwy zwracanej przez radio. Własna nazwa i logo mają pierwszeństwo. Logo jest opcjonalne: np. /local/loga/rns.png albo https://serwer/logo.png. Pliki /local/ umieść w /config/www/.",
+        "data": {
+          "pattern": "Fragment adresu strumienia (opcjonalny)",
+          "name": "Nazwa stacji",
+          "logo": "Adres logo (opcjonalny)"
+        }
+      },
+      "edit_station": {
+        "title": "Edytuj mapowanie",
+        "data": {
+          "station": "Stacja"
+        }
+      },
+      "delete_station": {
+        "title": "Usuń mapowanie",
+        "description": "Wybrany wpis zostanie usunięty po zatwierdzeniu.",
+        "data": {
+          "station": "Stacja"
+        }
+      },
+      "device": {
+        "title": "Ustawienia radia",
+        "data": {
+          "host": "Adres IP lub host",
+          "name": "Nazwa"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Brak połączenia z radiem.",
+      "invalid_host": "Wpisz adres IP lub nazwę hosta bez http:// i bez portu.",
+      "invalid_response": "Radio zwróciło nieprawidłową odpowiedź XML.",
+      "init_failed": "Nie udało się zainicjalizować API radia.",
+      "name_required": "Wpisz nazwę stacji.",
+      "duplicate_station": "Takie mapowanie już istnieje. Edytuj istniejący wpis.",
+      "invalid_logo": "Logo musi mieć adres /local/... albo pełny adres http:// lub https://."
+    },
+    "abort": {
+      "no_stations": "Brak zapisanych mapowań. Wybierz Dodaj stację."
+    }
+  }
 }
