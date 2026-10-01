@@ -3,66 +3,39 @@
 # https://github.com/DominikWrobel/airmusic
 #
 
-# Imports and dependencies
 import asyncio
-from datetime import time, timedelta
-import time
-from urllib.error import HTTPError, URLError
-import urllib.parse
-import urllib.request
-import aiohttp
-import voluptuous as vol
-import logging
-import time
-from bs4 import BeautifulSoup
-import xml.etree.ElementTree as ET
-import os
-import re
+from datetime import timedelta
+import hashlib
 import html
+import logging
 import mimetypes
+import os
+from pathlib import Path
+import re
+import time
 import unicodedata
+import urllib.parse
+from urllib.parse import urlsplit, unquote
+import xml.etree.ElementTree as ET
 
-_LOGGER = logging.getLogger(__name__)
-
-# From homeassitant
-
+import aiohttp
+from bs4 import BeautifulSoup
+import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.typing import ConfigType
 from homeassistant.components import media_source
 from homeassistant.components.upnp.const import DOMAIN as UPNP_DOMAIN
-from homeassistant.components.media_source import is_media_source_id
-
-from custom_components.airmusic import _LOGGER, DOMAIN as AIRMUSIC_DOMAIN
-
-from homeassistant.components.media_player.browse_media import (
-    BrowseMedia,
-    async_process_play_media_url,
-)
-
-from homeassistant.components.media_player import (
-    MediaClass,
-    MediaPlayerEntity,
-    MediaPlayerEntityFeature,
-    MediaPlayerState,
-    MediaType
-)
-
-from homeassistant.const import (
-    STATE_OFF, 
-    STATE_ON, 
-    STATE_UNKNOWN,
-    STATE_PLAYING, 
-    STATE_PAUSED, 
-    STATE_IDLE,
-    STATE_BUFFERING,
-    SERVICE_MEDIA_NEXT_TRACK,
-    SERVICE_MEDIA_PREVIOUS_TRACK
-)
-
+from homeassistant.components.media_player.browse_media import BrowseMedia, async_process_play_media_url
+from homeassistant.components.media_player import MediaPlayerEntity, MediaPlayerEntityFeature, MediaType
+from homeassistant.const import STATE_OFF, STATE_UNKNOWN, STATE_PLAYING, STATE_PAUSED, STATE_IDLE, STATE_BUFFERING
 import homeassistant.helpers.config_validation as cv
 from homeassistant.util import Throttle
-from .const import DOMAIN, CONF_HOST, CONF_NAME
+
+from .const import DOMAIN, CONF_HOST, CONF_NAME, DEFAULT_USERNAME, DEFAULT_PASSWORD
+from .transport import RadioTransport
+from .stations import CONF_STATIONS, DEFAULT_STATIONS, find_station
+
+_LOGGER = logging.getLogger(__name__)
 
 # VERSION
 VERSION = '1.7'
@@ -71,8 +44,6 @@ VERSION = '1.7'
 DEFAULT_PORT = 8080
 DEFAULT_NAME = "Airmusic Radio"
 DEFAULT_TIMEOUT = 50
-DEFAULT_USERNAME = 'roosu3g4go6sk7'
-DEFAULT_PASSWORD = 'ji39454xu/^'
 DEFAULT_SOURCE = ''
 DEFAULT_IMAGE = 'logo'
 
@@ -99,36 +70,6 @@ SUPPORT_AIRMUSIC = (
 
 MAX_VOLUME = 30
 
-# Fallback station names when /playinfo does not provide <station_info>.
-# Matching is case-insensitive and checks whether the pattern exists in TrackURI.
-# Add your own stations here, for example:
-#     "part_of_stream_url": "Station Name",
-STREAM_STATION_MAP = {
-    "r.dcs.redcdn.pl/sc/o2/Eurozet/live/antyradio.livx?audio=5": "Antyradio",
-    "stream.rcs.revma.com/1nnezw8qz7zuv": "Eska Rock",
-    "radiostream.pl/tuba8-1.mp3": "Rock Radio",
-    "waw.ic.smcdn.pl/5380-1.mp3": "Eska Rock Wa-wa",
-    "stream.rcs.revma.com/ypqt40u0x1zuv": "Radio Nowy Świat",
-    "radiostream.pl/tuba8918-1.mp": "Złote Przeboje",
-    "ml.cdn.eurozet.pl/mel-ldz.mp3": "Meloradio",
-    "radiostream.pl/tuba10-1.mp3": "TOK FM",
-    "stream.rcs.revma.com/an1ugyygzk8uv": "Radio 357",
-}
-
-# SETUP PLATFORM
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up platform."""                         
-    """Initialize the Airmusic device."""
-    devices = []
-    airmusic_list = hass.data[AIRMUSIC_DOMAIN]
-
-    for device in airmusic_list:
-        _LOGGER.debug("Configured a new AirmusicMediaPlayer %s",
-                      device.get_host)
-        devices.append(AirmusicMediaPlayer(device))
-
-    async_add_entities(devices, update_before_add=True)
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up Airmusic media player from a config entry."""
     hass.data.setdefault(DOMAIN, {})
@@ -137,22 +78,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     host = entry.data[CONF_HOST]
     name = entry.data[CONF_NAME]
 
-    airmusic = AirmusicMediaPlayer(hass, host, name)
+    airmusic = AirmusicMediaPlayer(hass, host, name, entry.options.get(CONF_STATIONS, DEFAULT_STATIONS))
+    hass.data[DOMAIN][entry.entry_id] = airmusic
 
     async_add_entities([airmusic], update_before_add=True)
 
-    return True
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
-    # This should also be awaited
     return True
 
 # Airmusic Media Player Device
 class AirmusicMediaPlayer(MediaPlayerEntity):
     """Representation of a Airmusic Media Player device."""
 
-    def __init__(self, hass, host, name):
+    def __init__(self, hass, host, name, stations=None):
         """Initialize the Airmusic device."""
         super().__init__()
         self.hass = hass
@@ -164,7 +101,8 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._timeout = None
         self._source = None
         self._image = None
-        self._opener = aiohttp.ClientSession()  # Initialize _opener
+        self._transport = RadioTransport(hass, host, aiohttp.BasicAuth(
+            DEFAULT_USERNAME, DEFAULT_PASSWORD, encoding='utf-8'))
         self._state = None
         self._pwstate = None
         self._volume = 0
@@ -172,6 +110,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._selected_source = ''
         self._selected_media_content_id = ''
         self._selected_media_title = ''
+        self._artwork_title = ''
         self._image_url = None
         self._fallback_image_path = None
         self._fallback_image_content_type = None
@@ -180,11 +119,21 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._source_names = {}
         self._sources = {}
         self._unique_id = f"{self._host}-{self._name}"
-        self._request_semaphore = asyncio.Semaphore(1)
         self._sleep_timer_count = 0
         self._sleep_timer_end_time = None
         self._is_local_playback = False
-        self._stream_station_map = STREAM_STATION_MAP
+        self._stations = [dict(s) for s in (DEFAULT_STATIONS if stations is None else stations)]
+        self._init_station_name = None
+        self._last_track_uri = None
+        self._attr_available = True
+        self._update_lock = asyncio.Lock()
+        self._image_cache = None
+        self._image_cache_key = None
+        self._image_cache_time = 0
+        self._last_init_time = 0
+        self._last_sources_time = 0
+        self.upnp_device = None
+        self.upnp_service = None
 
     # Run when added to HASS TO LOAD CHANNELS
     async def async_added_to_hass(self):
@@ -202,11 +151,15 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         """Set up UPnP for the device."""
         upnp_component = self.hass.data.get(UPNP_DOMAIN)
         if upnp_component:
-            devices = upnp_component.devices
+            devices = getattr(upnp_component, 'devices', ())
+            if isinstance(upnp_component, dict):
+                devices = upnp_component.get('devices', ())
+            if isinstance(devices, dict):
+                devices = devices.values()
             for device in devices:
-                if device.name == self._name:  # Match UPnP device to this media player
+                if getattr(device, 'name', None) == self._name:  # Match UPnP device to this media player
                     self.upnp_device = device
-                    self.upnp_service = device.av_transport
+                    self.upnp_service = getattr(device, 'av_transport', None)
                     break
         
         if not self.upnp_device:
@@ -216,6 +169,8 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def load_sources(self):
         """Initialize the Airmusic device loading the sources."""
         list_xml = await self.request_call('/list?id=75&start=1&count=20')
+        if not list_xml:
+            return
         soup = BeautifulSoup(list_xml, features="xml")
     
         src_names = [src_name.string for src_name in soup.find_all('name')]
@@ -223,28 +178,21 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     
         self._source_names = src_names
         self._sources = dict(zip(src_names, sources))
-        self._is_local_playback = False
+        self._last_sources_time = time.monotonic()
 
     async def get_sources_reference(self):
         """Import BeautifulSoup."""
         # Get first bouquet reference
         list_xml = await self.request_call('/list?id=75&start=1&count=20')
-        soup = BeautifulSoup(list_xml, features = "xml")
-        return soup.find('status').renderContents().decode('UTF8')
+        if not list_xml:
+            return None
+        soup = BeautifulSoup(list_xml, features="xml")
+        status = soup.find('status')
+        return status.get_text() if status else None
 
     async def request_call(self, url):
-        """Call web API request with rate limiting."""
-        uri = f'http://{self._host}{url}'
-        _LOGGER.debug("Airmusic: [request_call] - Call request %s ", uri)
-        async with self._request_semaphore:
-            try:
-                async with self._opener.get(uri, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^', encoding='utf-8')) as resp:
-                    text = await resp.text()
-                await asyncio.sleep(1)  # 1 second delay between requests
-                return text
-            except aiohttp.ClientConnectorError as e:
-                _LOGGER.error("Connection error: %s", str(e))
-                return None
+        """Call the API using the shared one-second radio gate."""
+        return await self._transport.request("GET", f"http://{self._host}{url}")
 
     async def get_track_uri(self):
         """Get the current stream URL from AVTransport GetPositionInfo."""
@@ -266,8 +214,10 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         }
 
         try:
-            async with self._opener.post(url, data=body, headers=headers) as resp:
-                text = await resp.text()
+            text = await self._transport.request(
+                "POST", url, data=body, headers=headers, authenticate=False)
+            if not text:
+                return None
 
             # Normal XML response: <TrackURI>http://...</TrackURI>
             match = re.search(
@@ -288,16 +238,36 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         return None
 
     def _station_name_from_track_uri(self, track_uri):
-        """Return station name from TrackURI using STREAM_STATION_MAP."""
-        if not track_uri:
-            return None
+        station = find_station(self._stations, track_uri)
+        return station["name"] if station else None
 
-        track_uri_lower = track_uri.lower()
-        for pattern, name in self._stream_station_map.items():
-            if pattern.lower() in track_uri_lower:
-                return name
+    def update_station_options(self, stations):
+        """Apply options without reloading the entity or losing its sleep timer."""
+        self._stations = [dict(s) for s in stations]
+        self._clear_image()
+        self._last_track_uri = None
 
-        return None
+    def _clear_image(self):
+        self._image_url = None
+        self._fallback_image_path = None
+        self._fallback_image_content_type = None
+        self._fallback_image_hash = None
+
+    def _set_configured_logo(self, logo):
+        if not logo:
+            return False
+        if logo.startswith("/local/"):
+            root = os.path.realpath(self.hass.config.path("www"))
+            relative = unquote(urlsplit(logo).path[len("/local/"):])
+            path = os.path.realpath(os.path.join(root, relative))
+            if os.path.commonpath([root, path]) != root or not os.path.isfile(path):
+                return False
+            self._fallback_image_path = path
+            self._fallback_image_content_type = mimetypes.guess_type(path)[0] or "image/png"
+            self._fallback_image_hash = f"local-{path}-{os.stat(path).st_mtime_ns}"
+        else:
+            self._image_url = logo
+        return True
 
     def _logo_filename_from_station_name(self, station_name):
         """Return logo file name in /config/www based on station name."""
@@ -346,130 +316,175 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     # Component Update
     @Throttle(MIN_TIME_BETWEEN_SCANS)
     async def async_update(self):
-        """Update device status."""
-        playinfo_xml = await self.request_call('/playinfo')
-        if not playinfo_xml:
-            _LOGGER.warning("Airmusic: No response from device")
-            return
-            
-        soup = BeautifulSoup(playinfo_xml, features="xml")
+        """Update normal and background modes with common timer handling."""
+        async with self._update_lock:
+            try:
+                await self._async_refresh()
+            finally:
+                await self._check_sleep_timer()
 
-        # Update power state
-        if soup.result:
-            pwstate = soup.result.renderContents().decode('UTF8')
-            self._update_power_state(pwstate)
-        else:
-            _LOGGER.warning("Airmusic: No result element in response")
-            return
+    @staticmethod
+    def _parse_response(xml):
+        if not xml:
+            return None
+        try:
+            ET.fromstring(xml)
+        except ET.ParseError:
+            return None
+        return BeautifulSoup(xml, features="xml")
 
-        # If powered on, update other information from same response
+    async def _async_refresh(self):
+        xml = await self.request_call('/playinfo')
+        soup = self._parse_response(xml)
+        if soup is None:
+            self._attr_available = False
+            return
+        if 'INVALID_CMD' in xml:
+            await self._radio_init()
+            xml = await self.request_call('/playinfo')
+            soup = self._parse_response(xml)
+        if soup is None or soup.find('sid') is None:
+            await self._update_from_background()
+            return
+        self._attr_available = True
+        self._update_power_state(xml)
         if self._pwstate in ['playing', 'idle', 'buffering', 'paused']:
             await self._update_media_info(soup)
             self._update_volume_info(soup)
+        else:
+            self._clear_media()
+        await self._retry_sources()
+
+    async def _retry_sources(self):
+        if not self._sources and time.monotonic() - self._last_sources_time >= 60:
+            self._last_sources_time = time.monotonic()
+            await self.load_sources()
+
+    async def _radio_init(self):
+        """Restore API session and read the current station name."""
+        self._init_station_name = None
+        self._last_init_time = time.monotonic()
+        xml = await self.request_call('/init?language=en')
+        soup = self._parse_response(xml)
+        if soup is None:
+            return False
+        tag = soup.find('cur_play_name')
+        if tag:
+            self._init_station_name = tag.get_text().strip() or None
+        return 'INVALID_CMD' not in xml and 'FAIL' not in xml
+
+    async def _update_from_background(self):
+        xml = await self.request_call('/background_play_status')
+        if xml and 'INVALID_CMD' in xml:
+            await self._radio_init()
+            xml = await self.request_call('/background_play_status')
+        soup = self._parse_response(xml)
+        if soup is None or soup.find('sid') is None:
+            self._attr_available = False
+            return
+        self._attr_available = True
+        self._update_power_state(xml)
+        # On affected firmware sid=1 also represents standby. There is no
+        # independent power bit in this endpoint; preserve PR #8's convention.
+        if soup.sid.get_text().strip() == '1':
+            self._pwstate = 'true'
+        self._update_volume_info(soup)
+        if self._pwstate in ['playing', 'buffering', 'paused']:
+            await self._update_media_info(soup)
+        else:
+            self._clear_media()
+        await self._retry_sources()
+
+    def _clear_media(self):
+        self._selected_source = ''
+        self._selected_media_title = ''
+        self._artwork_title = ''
+        self._selected_media_content_id = ''
+        self._last_track_uri = None
+        self._init_station_name = None
+        self._clear_image()
+
+    async def _check_sleep_timer(self):
+        if self._sleep_timer_end_time and time.time() >= self._sleep_timer_end_time:
+            # Do not toggle a confirmed off device back on. When unreachable,
+            # keep the deadline and try again once state is available.
+            if self._attr_available:
+                if self._pwstate == 'true':
+                    self._reset_sleep_timer()
+                else:
+                    await self.async_turn_off()
 
     def _update_volume_info(self, soup):
-        """Update volume and mute status from parsed XML."""
         if soup.vol:
-            vol = soup.vol.renderContents().decode('UTF8')
-            self._volume = int(vol) / MAX_VOLUME if vol else None
-        else:
-            self._volume = None
-            
+            try:
+                self._volume = max(0.0, min(1.0, int(soup.vol.get_text()) / MAX_VOLUME))
+            except (ValueError, TypeError):
+                _LOGGER.debug("AirMusic returned invalid volume")
         if soup.mute:
-            mute = soup.mute.renderContents().decode('UTF8')
-            self._muted = (mute == '1') if mute else None
-        else:
-            self._muted = None
+            mute = soup.mute.get_text().strip()
+            if mute in ('0', '1'):
+                self._muted = mute == '1'
 
-    def _update_power_state(self, pwstate):
-        """Update power state based on playinfo response.
-        
-        Status ID (sid) meanings:
-        1=not playing, 2=buffering, 5=buffer 100%, 6=playing,
-        7=ending, 9=paused, 12=reading file, 14=failed to connect
-        """
-        if pwstate.find('FAIL') >= 0:
+    def _update_power_state(self, xml):
+        """Parse sid as a whole value (sid=12 is not sid=1)."""
+        if 'FAIL' in xml:
             self._pwstate = 'true'
-        elif pwstate.find('INVALID_CMD') >= 0:
-            self._pwstate = 'idle'
-        elif pwstate.find('sid>6') >= 0:
-            self._pwstate = 'playing'
-        elif pwstate.find('sid>2') >= 0 or pwstate.find('sid>5') >= 0:
-            self._pwstate = 'buffering'
-        elif pwstate.find('sid>9') >= 0:
-            self._pwstate = 'paused'
-        elif pwstate.find('sid>1') >= 0 or pwstate.find('sid>7') >= 0 or pwstate.find('sid>12') >= 0 or pwstate.find('sid>14') >= 0:
-            self._pwstate = 'idle'
-        else:
-            self._pwstate = 'unknown'
+            return
+        soup = self._parse_response(xml)
+        sid = soup.find('sid').get_text().strip() if soup and soup.find('sid') else None
+        self._pwstate = {
+            '1': 'idle', '2': 'buffering', '5': 'buffering', '6': 'playing',
+            '7': 'idle', '9': 'paused', '12': 'idle', '14': 'idle',
+        }.get(sid, 'unknown')
 
     async def _update_media_info(self, soup):
-        """Update media information from playinfo response."""
-        current_time = int(time.time())
-        fallback_source = str(current_time)
+        """Resolve station metadata and reset artwork on every station change."""
+        def value(tag):
+            element = soup.find(tag)
+            return element.get_text().strip() if element else ''
 
-        station_info = (
-            soup.station_info.renderContents().decode('UTF8').strip()
-            if soup.station_info
-            else ""
-        )
-
-        if station_info:
-            self._selected_source = station_info
-        else:
-            track_uri = await self.get_track_uri()
-            mapped_station_name = self._station_name_from_track_uri(track_uri)
-
-            if mapped_station_name:
-                self._selected_source = mapped_station_name
-            else:
-                # Preserve old integration behaviour when no station name is available.
-                self._selected_source = fallback_source
-
-        eventid = soup.artist.renderContents().decode('UTF8') if soup.artist else None
-        eventtitle = soup.song.renderContents().decode('UTF8') if soup.song else None
-
-        # Calculate remaining sleep time
-        sleep_timer_info = ""
+        reported_name = value('station_info')
+        # Always inspect TrackURI: custom names/logos may override radio data.
+        track_uri = await self.get_track_uri()
+        changed = track_uri != self._last_track_uri
+        if changed:
+            self._init_station_name = None
+        self._last_track_uri = track_uri
+        rule = find_station(self._stations, track_uri, reported_name)
+        if not reported_name and not rule:
+            # Periodic refresh also covers firmware with no useful TrackURI.
+            if changed or not self._init_station_name or time.monotonic() - self._last_init_time >= 30:
+                await self._radio_init()
+            reported_name = self._init_station_name or ''
+            rule = find_station(self._stations, track_uri, reported_name)
+        station = rule['name'] if rule else reported_name
+        self._selected_source = station or ''
+        artist, song = value('artist'), value('song')
+        suffix = ''
         if self._sleep_timer_end_time:
-            remaining_time = max(0, int(self._sleep_timer_end_time - time.time()))
-            if remaining_time > 0:
-                minutes, seconds = divmod(remaining_time, 60)
-                sleep_timer_info = f" [Sleep: {minutes:02d}:{seconds:02d}]"
-            else:
-                self._reset_sleep_timer()
-                asyncio.create_task(self.async_turn_off())
-
-        if self._selected_source != str(current_time):
-            self._selected_media_title = ' - '.join(filter(None, [self._selected_source, eventid, eventtitle])) + sleep_timer_info
-        else:
-            self._selected_media_title = ' - '.join(filter(None, [eventid, eventtitle])) + sleep_timer_info
-
-        self._selected_media_content_id = eventid
-
-        # Check if sleep timer has ended
-        if self._sleep_timer_end_time and time.time() >= self._sleep_timer_end_time:
-            self._sleep_timer_count = 0
-            self._sleep_timer_end_time = None
-    
-        # Update image URL. Prefer the image supplied by the radio.
-        # If the radio does not provide one, try a local fallback logo from /config/www.
-        self._image_url = None
-        self._fallback_image_path = None
-        self._fallback_image_content_type = None
-        self._fallback_image_hash = None
-
-        imagelogo = soup.result.renderContents().decode('UTF8')
-        if imagelogo.find('<album_img>') >= 0:
+            seconds = max(0, int(self._sleep_timer_end_time - time.time()))
+            if seconds:
+                minutes, seconds = divmod(seconds, 60)
+                suffix = f" [Sleep: {minutes:02d}:{seconds:02d}]"
+        self._artwork_title = ' - '.join(filter(None, [station, artist, song]))
+        self._selected_media_title = self._artwork_title + suffix
+        self._selected_media_content_id = artist
+        self._clear_image()
+        # Explicit UI logo overrides radio artwork; otherwise retain existing
+        # album -> station logo -> local file behavior.
+        if rule and self._set_configured_logo(rule.get('logo', '')):
+            return
+        if soup.find('album_img') is not None:
             self._image_url = f'http://{self._host}:8080/album.jpg'
-        elif imagelogo.find('<logo_img>') >= 0:
+        elif soup.find('logo_img') is not None:
             self._image_url = f'http://{self._host}:8080/playlogo.jpg'
-        elif self._selected_source != fallback_source:
-            self._set_fallback_station_logo(self._selected_source)
+        elif station:
+            self._set_fallback_station_logo(station)
 
     async def async_will_remove_from_hass(self):
         """Cleanup when entity is removed from Home Assistant."""
-        await self._opener.close()
+        await self._transport.close()
+        await super().async_will_remove_from_hass()
 
 # Browse media
     async def async_browse_media(
@@ -496,8 +511,8 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         if media_type == MediaType.MUSIC:
             if self.upnp_service:
                 # Use UPnP to play the media
-                await self.upnp_service.set_av_transport_uri(processed_media_id)
-                await self.upnp_service.play()
+                await self._transport.serialized(lambda: self.upnp_service.set_av_transport_uri(processed_media_id))
+                await self._transport.serialized(lambda: self.upnp_service.play())
                 self._is_local_playback = True
             else:
                 # Fallback to previous method if UPnP is not available
@@ -579,99 +594,57 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 # GET - Radio station logo
     @property
     def media_image_url(self):
-        """Image URL supplied directly by the radio, if available."""
-        if self._image_url:
-            current_time = int(time.time())
-            separator = "&" if "?" in self._image_url else "?"
-            return f"{self._image_url}{separator}t={current_time}"
-        return None
+        """Image address; HA serves authenticated radio artwork via its proxy."""
+        return self._image_url
 
     @property
     def media_image_hash(self):
-        """Hash for locally proxied fallback logos."""
-        return self._fallback_image_hash
-        
-    @Throttle(MIN_TIME_BETWEEN_SCANS)    
+        if self._fallback_image_hash:
+            return self._fallback_image_hash
+        if self._image_url:
+            # Periodically invalidate constant radio album.jpg URLs as well.
+            key = f"{self._image_url}|{self._artwork_title}|{int(time.time()) // 30}"
+            return hashlib.sha256(key.encode('utf-8')).hexdigest()[:16]
+        return None
+
     async def async_update_media_image_url(self):
-        """Update the media image URL."""
-        if self._pwstate == 'playing':
-            playinfo_xml = await self.request_call('/playinfo')
-            soup = BeautifulSoup(playinfo_xml, features="xml")
-            imagelogo = soup.result.renderContents().decode('UTF8')
-            current_time = int(time.time())
-
-            self._image_url = None
-            self._fallback_image_path = None
-            self._fallback_image_content_type = None
-            self._fallback_image_hash = None
-
-            if imagelogo.find('<album_img>') >= 0:
-                self._image_url = f'http://{self._host}:{self._port}/album.jpg'
-            elif imagelogo.find('<logo_img>') >= 0:
-                self._image_url = f'http://{self._host}:{self._port}/playlogo.jpg'
-            elif self._selected_source:
-                self._set_fallback_station_logo(self._selected_source)
-
-            _LOGGER.debug("Airmusic: [update_media_image_url] - Image URL updated: %s", self._image_url)
-        else:
-            self._image_url = None
-            self._fallback_image_path = None
-            self._fallback_image_content_type = None
-            self._fallback_image_hash = None
+        """Metadata updates already resolve artwork without a duplicate poll."""
+        return None
 
     async def async_get_media_image(self):
-        """Fetch the media image of the current playing media."""
-        _LOGGER.debug(
-            "Airmusic: [async_get_media_image] - Called with image URL: %s, fallback path: %s",
-            self._image_url,
-            self._fallback_image_path,
-        )
-
-        # Local fallback logo from /config/www, returned through HA media proxy.
         if self._fallback_image_path:
-            if not os.path.isfile(self._fallback_image_path):
-                _LOGGER.debug(
-                    "Airmusic: [async_get_media_image] - Fallback image missing: %s",
-                    self._fallback_image_path,
-                )
-                return None, None
-
-            try:
-                with open(self._fallback_image_path, "rb") as image_file:
-                    return image_file.read(), self._fallback_image_content_type or "image/png"
-            except OSError as err:
-                _LOGGER.debug(
-                    "Airmusic: [async_get_media_image] - Unable to read fallback image: %s",
-                    err,
-                )
-                return None, None
-
-        if self._image_url is None:
-            _LOGGER.debug("Airmusic: [async_get_media_image] - No image URL set")
-            return None, None
-
-        url = self._image_url if isinstance(self._image_url, str) else self._image_url.get('url')
+            path = self._fallback_image_path
+            content_type = self._fallback_image_content_type
+            def read_image():
+                try:
+                    return Path(path).read_bytes(), content_type or 'image/png'
+                except OSError:
+                    return None, None
+            return await self.hass.async_add_executor_job(read_image)
+        url = self._image_url
         if not url:
-            _LOGGER.debug("Airmusic: [async_get_media_image] - No valid URL found")
             return None, None
-
-        try:
-            async with aiohttp.ClientSession() as session:
-                _LOGGER.debug("Airmusic: [async_get_media_image] - Attempting to fetch image from: %s", url)
-                async with session.get(url, auth=aiohttp.BasicAuth('su3g4go6sk7', 'ji39454xu/^')) as response:
-                    if response.status == 200:
-                        content = await response.read()
-                        _LOGGER.debug("Airmusic: [async_get_media_image] - Successfully fetched image")
-                        return content, response.content_type
-                    else:
-                        _LOGGER.debug("Airmusic: [async_get_media_image] - Failed to fetch image: %s", response.status)
-                        return None, None
-        except aiohttp.ClientError as e:
-            _LOGGER.debug("Airmusic: [async_get_media_image] - Unable to fetch image: %s", str(e))
-            return None, None
-        except asyncio.TimeoutError:
-            _LOGGER.debug("Airmusic: [async_get_media_image] - Timeout while fetching image")
-            return None, None
+        key = (url, self._artwork_title)
+        if self._image_cache_key == key and time.monotonic() - self._image_cache_time < 30:
+            return self._image_cache
+        is_radio = urlsplit(url).hostname == self._host.lower()
+        if is_radio:
+            result = await self._transport.request('GET', url, binary=True)
+        else:
+            # Never send radio credentials to a configured external logo URL.
+            from homeassistant.helpers.aiohttp_client import async_get_clientsession
+            session = async_get_clientsession(self.hass)
+            try:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                    response.raise_for_status()
+                    result = (await response.read(), response.content_type)
+            except (aiohttp.ClientError, asyncio.TimeoutError):
+                result = None
+        if result:
+            self._image_cache = result
+            self._image_cache_key = key
+            self._image_cache_time = time.monotonic()
+        return result or (None, None)
 
 # GET - Current source
     @property
@@ -734,7 +707,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def async_media_play(self):
         """Send play command."""
         if self._is_local_playback and self.upnp_service:
-            await self.upnp_service.play()
+            await self._transport.serialized(lambda: self.upnp_service.play())
         else:
             await self.request_call('/Sendkey?key=29')
 
@@ -742,7 +715,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def async_media_pause(self):
         """Send pause command."""
         if self._is_local_playback and self.upnp_service:
-            await self.upnp_service.pause()
+            await self._transport.serialized(lambda: self.upnp_service.pause())
         else:
             await self.request_call('/Sendkey?key=29')
 
@@ -750,7 +723,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def async_media_stop(self):
         """Send stop command."""
         if self._is_local_playback and self.upnp_service:
-            await self.upnp_service.stop()
+            await self._transport.serialized(lambda: self.upnp_service.stop())
         else:
             await self.request_call('/Sendkey?key=30')
 
@@ -762,8 +735,9 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 # SET - Turn off
     async def async_turn_off(self):
         """Turn off media player."""
-        await self.request_call('/Sendkey?key=7')
-        self._reset_sleep_timer()
+        response = await self.request_call('/Sendkey?key=7')
+        if response is not None and 'FAIL' not in response and 'INVALID_CMD' not in response:
+            self._reset_sleep_timer()
 
 # SET - Reset sleep timer
     def _reset_sleep_timer(self):
@@ -778,7 +752,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         if self._is_local_playback:
             if self.upnp_service:
                 try:
-                    await self.upnp_service.next()
+                    await self._transport.serialized(lambda: self.upnp_service.next())
                 except Exception as e:
                     _LOGGER.error("UPnP next track failed: %s. Falling back to default method.", str(e))
                     await self.request_call('/Sendkey?key=31')
@@ -793,7 +767,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         if self._is_local_playback:
             if self.upnp_service:
                 try:
-                    await self.upnp_service.previous()
+                    await self._transport.serialized(lambda: self.upnp_service.previous())
                 except Exception as e:
                     _LOGGER.error("UPnP previous track failed: %s. Falling back to default method.", str(e))
                     await self.request_call('/Sendkey?key=32')
