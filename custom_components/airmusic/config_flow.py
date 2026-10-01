@@ -16,7 +16,7 @@ from .transport import RadioTransport
 def device_schema(values):
     return vol.Schema({
         vol.Required(CONF_HOST, default=values.get(CONF_HOST, '')): str,
-        vol.Required(CONF_NAME, default=values.get(CONF_NAME, DEFAULT_NAME, DEFAULT_USERNAME, DEFAULT_PASSWORD)): str,
+        vol.Required(CONF_NAME, default=values.get(CONF_NAME, DEFAULT_NAME)): str,
     })
 
 
@@ -54,7 +54,7 @@ class AirMusicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if error:
                     errors['base'] = error
                 else:
-                    name = user_input.get(CONF_NAME, DEFAULT_NAME, DEFAULT_USERNAME, DEFAULT_PASSWORD).strip() or DEFAULT_NAME
+                    name = user_input.get(CONF_NAME, DEFAULT_NAME).strip() or DEFAULT_NAME
                     return self.async_create_entry(title=name, data={CONF_HOST: host, CONF_NAME: name})
         return self.async_show_form(step_id='user', data_schema=device_schema(user_input or {}), errors=errors)
 
@@ -148,11 +148,10 @@ class AirMusicOptionsFlow(config_entries.OptionsFlow):
                 if error:
                     errors['base'] = error
                 else:
-                    name = user_input.get(CONF_NAME, DEFAULT_NAME, DEFAULT_USERNAME, DEFAULT_PASSWORD).strip() or DEFAULT_NAME
+                    name = user_input.get(CONF_NAME, DEFAULT_NAME).strip() or DEFAULT_NAME
                     self.hass.config_entries.async_update_entry(
                         self.config_entry, title=name,
                         data={**self.config_entry.data, CONF_HOST: host, CONF_NAME: name})
                     return self._save()
         return self.async_show_form(step_id='device',
             data_schema=device_schema(user_input or self.config_entry.data), errors=errors)
-
