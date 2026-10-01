@@ -1,14 +1,85 @@
 {
-    "config": {
-        "step": {
-            "user": {
-                "data": {
-                    "host": "IP adress",
-                    "name": "Name"
-                },
-                "description": "Enter the IP address and name for your Airmusic device.",
-                "title": "Set up Airmusic Integration"
-            }
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up AirMusic",
+        "data": {
+          "host": "IP address or hostname",
+          "name": "Name"
         }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the radio.",
+      "invalid_host": "Enter an IP or hostname without a scheme or port.",
+      "invalid_response": "The radio returned invalid XML.",
+      "init_failed": "Could not initialize the radio API.",
+      "name_required": "Enter the station name.",
+      "duplicate_station": "This mapping already exists. Edit the existing entry.",
+      "invalid_logo": "Use /local/... or a full http:// or https:// image URL."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "AirMusic options",
+        "menu_options": {
+          "add_station": "Add station",
+          "edit_station": "Edit station",
+          "delete_station": "Delete station",
+          "device": "Radio address and name"
+        }
+      },
+      "add_station": {
+        "title": "Station mapping",
+        "description": "Match a stream URL substring (case insensitive). Leave it empty to match the station name reported by the radio. Custom names and logos take precedence. Logo is optional: /local/logos/rns.png or https://server/logo.png. Place /local/ files in /config/www/.",
+        "data": {
+          "pattern": "Stream URL substring (optional)",
+          "name": "Station name",
+          "logo": "Logo URL (optional)"
+        }
+      },
+      "station": {
+        "title": "Station mapping",
+        "description": "Match a stream URL substring (case insensitive). Leave it empty to match the station name reported by the radio. Custom names and logos take precedence. Logo is optional: /local/logos/rns.png or https://server/logo.png. Place /local/ files in /config/www/.",
+        "data": {
+          "pattern": "Stream URL substring (optional)",
+          "name": "Station name",
+          "logo": "Logo URL (optional)"
+        }
+      },
+      "edit_station": {
+        "title": "Edit mapping",
+        "data": {
+          "station": "Station"
+        }
+      },
+      "delete_station": {
+        "title": "Delete mapping",
+        "description": "The selected mapping will be deleted when submitted.",
+        "data": {
+          "station": "Station"
+        }
+      },
+      "device": {
+        "title": "Radio settings",
+        "data": {
+          "host": "IP address or hostname",
+          "name": "Name"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the radio.",
+      "invalid_host": "Enter an IP or hostname without a scheme or port.",
+      "invalid_response": "The radio returned invalid XML.",
+      "init_failed": "Could not initialize the radio API.",
+      "name_required": "Enter the station name.",
+      "duplicate_station": "This mapping already exists. Edit the existing entry.",
+      "invalid_logo": "Use /local/... or a full http:// or https:// image URL."
+    },
+    "abort": {
+      "no_stations": "No saved mappings. Select Add station."
+    }
+  }
 }
