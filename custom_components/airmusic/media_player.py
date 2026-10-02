@@ -105,8 +105,8 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             DEFAULT_USERNAME, DEFAULT_PASSWORD, encoding='utf-8'))
         self._state = None
         self._pwstate = None
-        self._volume = 0
-        self._muted = False
+        self._volume = None
+        self._muted = None
         self._selected_source = ''
         self._selected_media_content_id = ''
         self._selected_media_title = ''
@@ -339,10 +339,8 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         if soup is None:
             self._attr_available = False
             return
-        if 'INVALID_CMD' in xml:
-            await self._radio_init()
-            xml = await self.request_call('/playinfo')
-            soup = self._parse_response(xml)
+        # INVALID_CMD does not prove a lost session: affected firmware
+        # reports it while audio is playing. Prefer the read-only endpoint.
         if soup is None or soup.find('sid') is None:
             await self._update_from_background()
             return
@@ -375,9 +373,8 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
 
     async def _update_from_background(self):
         xml = await self.request_call('/background_play_status')
-        if xml and 'INVALID_CMD' in xml:
-            await self._radio_init()
-            xml = await self.request_call('/background_play_status')
+        # Never initialize automatically from polling. /init can disturb
+        # playback on some firmware; failure here means unavailable.
         soup = self._parse_response(xml)
         if soup is None or soup.find('sid') is None:
             self._attr_available = False
@@ -451,12 +448,8 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             self._init_station_name = None
         self._last_track_uri = track_uri
         rule = find_station(self._stations, track_uri, reported_name)
-        if not reported_name and not rule:
-            # Periodic refresh also covers firmware with no useful TrackURI.
-            if changed or not self._init_station_name or time.monotonic() - self._last_init_time >= 30:
-                await self._radio_init()
-            reported_name = self._init_station_name or ''
-            rule = find_station(self._stations, track_uri, reported_name)
+        # Names must come from this read-only response or user mappings.
+        # Do not call /init just to discover a name during playback.
         station = rule['name'] if rule else reported_name
         self._selected_source = station or ''
         artist, song = value('artist'), value('song')
@@ -691,7 +684,9 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
     async def async_set_volume_level(self, volume):
         """Set volume level, range 0..1."""
         volset = str(round(volume * MAX_VOLUME))
-        await self.request_call('/setvol?vol=' + volset)
+        response = await self.request_call('/setvol?vol=' + volset)
+        if response is not None and 'FAIL' not in response and 'INVALID_CMD' not in response:
+            self._volume = max(0.0, min(1.0, round(volume * MAX_VOLUME) / MAX_VOLUME))
 
 # SET - Volume mute
     async def async_mute_volume(self, mute):
