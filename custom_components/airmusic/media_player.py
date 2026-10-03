@@ -330,7 +330,20 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         try:
             ET.fromstring(xml)
         except ET.ParseError:
-            return None
+            # Some firmware emits bare '&' in metadata or URL attributes.
+            # Keep existing XML entities, CDATA, comments and processing
+            # instructions intact; do not conceal other structural errors.
+            xml = re.sub(
+                r'<!\[CDATA\[.*?\]\]>|<!--.*?-->|<\?.*?\?>|'
+                r'&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)',
+                lambda match: '&amp;' if match.group(0) == '&' else match.group(0),
+                xml,
+                flags=re.DOTALL,
+            )
+            try:
+                ET.fromstring(xml)
+            except ET.ParseError:
+                return None
         return BeautifulSoup(xml, features="xml")
 
     async def _async_refresh(self):
