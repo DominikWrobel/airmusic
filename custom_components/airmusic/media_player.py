@@ -187,6 +187,7 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
         self._is_local_playback = False
         self._stream_station_map = STREAM_STATION_MAP
         self._init_station_name = None
+        self._last_init_track_uri = None
 
     # Run when added to HASS TO LOAD CHANNELS
     async def async_added_to_hass(self):
@@ -487,8 +488,17 @@ class AirmusicMediaPlayer(MediaPlayerEntity):
             if mapped_station_name:
                 self._selected_source = mapped_station_name
             else:
-                # Preserve old integration behaviour when no station name is available.
-                self._selected_source = fallback_source
+                # PATCH: /playinfo without station_info -> name from /init
+                # (read once per station change, cached in _init_station_name)
+                if track_uri != self._last_init_track_uri:
+                    self._last_init_track_uri = track_uri
+                    self._init_station_name = None
+                    await self._radio_init()
+                if self._init_station_name:
+                    self._selected_source = self._init_station_name
+                else:
+                    # Preserve old integration behaviour when no station name is available.
+                    self._selected_source = fallback_source
 
         eventid = soup.artist.renderContents().decode('UTF8') if soup.artist else None
         eventtitle = soup.song.renderContents().decode('UTF8') if soup.song else None
